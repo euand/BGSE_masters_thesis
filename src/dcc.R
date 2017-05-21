@@ -19,7 +19,6 @@ data3 <- data3[seq(nrow(data3),1,-1),]
 data3$Date <- as.Date(data3$Date)
 price3 <- data3$Adj.Close
 z <- ( log(price3[2:length(price3)]) - log(price3[1:(length(price3)-1)]) ) * 100
-plot(z)
 
 z <- z[data3$Date >= data1$Date[1]]
 z <- z[!is.na(z)]
@@ -85,30 +84,38 @@ rank_one_update <- function(L, x, a, b){
 }
 
 rank_r_update <- function(L, W){
-  # Note L has to be in the LDL decomposition
+  # L is upper triangular
+  # Calculate LDL decomposition
+  dd <- diag(L) 
+  ch <- t(L/dd) 
+  DD <- dd^2 
+
   work = W
-  alpha = rep(1, r)
-  L_new = L
-  d = rep(1, n)
   r = ncol(W)
-  gamma = rep(1,r)
+  n = nrow(L)
+  for(i in 1:r){
+    alpha[i] = 1; gamma[i] = 1
+  }
   for(j in 1:n){
       for(i in 1:r){
-      alpha_bar = alpha[i] + work[j,i]*work[j,i]#/d[j]
-      d[j] = d[j] * alpha_bar
-      gamma[i] = work[j,i]/d[j]
-      d[j] = d[j]/alpha[i]
+      alpha_bar = alpha[i] + work[j,i]*work[j,i]/DD[j]
+      DD[j] = DD[j] * alpha_bar
+      gamma[i] = work[j,i]/DD[j]
+      DD[j] = DD[j]/alpha[i]
       alpha[i] = alpha_bar
     }
     for(p in j:n){
       for(i in 1:r){
-        work[p,i] = work[p,i] - work[j,i] * L_new[p,j];
-        L_new[p,j] = L_new[p,j] + gamma[i] * work[p,i];
+        work[p,i] = work[p,i] - work[j,i] * ch[p,j];
+        ch[p,j] = ch[p,j] + gamma[i] * work[p,i];
       }
     }
   }
-  return(L_new)
+  return(ch*sqrt(DD))
 }
+
+rank_r_update(L,W)
+t(chol(L%*%t(L) + W%*%t(W)))
 
 log_likelihood_full_updates <- function(params){
   alpha <- params[1]
@@ -121,14 +128,16 @@ log_likelihood_full_updates <- function(params){
   
   loglik = rep(0,T)
   
-  l = log(det(diag(diag(omega**(-0.5))) %*% omega %*% diag(diag(omega**(-0.5)))))
+  L <- chol(omega)
+  l = sum(log(diag(L)))
   y = solve(diag(diag(omega**(-1/2))) %*% omega %*% diag(diag(omega**(-1/2))), eps[,1])
   l2 = y %*% diag(diag(omega**(-1/2))) %*% omega %*% diag(diag(omega**(-1/2))) %*% t(t(y))
   l = l + l2
   Q_t_minus = omega
   for(t in 2:T){
-    Qt = omega + alpha * t(t(eps[,t])) %*% eps[,t] + beta * Q_t_minus
-    L = t(chol(Qt))
+    #Qt = omega + alpha * t(t(eps[,t])) %*% eps[,t] + beta * Q_t_minus
+    #L = t(chol(Qt))
+    L = rank_one_update(L,eps[,t])
     l = l + sum(log(diag(L)))
     y = solve(diag(diag(Qt**(-1/2))) %*% Qt %*% diag(diag(Qt**(-1/2))), eps[,t])
     l = l + y %*% diag(diag(omega**(-1/2))) %*% omega %*% diag(diag(omega**(-1/2))) %*% t(t(y))
@@ -139,7 +148,7 @@ log_likelihood_full_updates <- function(params){
 lower = c(10E-6,10E-6)
 upper = c(1-10E-6, 1-10E-6)
 
-params = c(0.4,0.3)
+params = c(0.3,0.3)
 
 fit = nlminb(start = params, objective = log_likelihood_full_updates,
              lower = lower, upper = upper,  control = list(trace=3))
