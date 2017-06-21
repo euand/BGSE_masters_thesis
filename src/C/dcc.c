@@ -82,30 +82,27 @@ void chol(double **L, double **M, int n) {
   }
 }
 
-// update of cholesky decomposition for S' = a*S + b*x*x'
-void rank_one_chol_up(double **L_new, double **L_old, double *x, int n, double a, double b, double *work) {
+// update of S = a*xx' + b*S
+void chol_up(double **L, double *x, int n, double a, double b, double *work) {
   int i,j;
   double r, c, s;
 
   memcpy(work,x,sizeof(double)*n);
-  for(i=0;i<n;++i) work[i] = sqrt(b/a)*work[i]; // this could be avoided maybe?
-
-  memcpy(work,x,sizeof(double)*n);
+  for(i=0;i<n;++i) work[i] = sqrt(a/b)*work[i]; // this could be avoided maybe?
 
   for(i=0;i<n;++i){
-    r = sqrt(L_new[i][i]*L_old[i][i] + work[i]*work[i]);
-    c = r /( sqrt(a)*L_new[i][i] );
-    s = (work[i]) / (sqrt(a)*L_new[i][i]);
-    L_new[i][i] = r;
+    r = sqrt(L[i][i]*L[i][i] + work[i]*work[i]);
+    c = r/L[i][i];
+    s = (work[i]) / L[i][i];
+    L[i][i] = r;
     for(j=i+1;j<n;++j){
-      L_new[j][i] = (sqrt(a)*L_new[j][i] + s*work[j]) / c;
-      work[j] = c*work[j] - s*L_new[j][i];
+      L[j][i] = (L[j][i] + s*work[j]) / c;
+      work[j] = c*work[j] - s*L[j][i];
     }
   }
-  // Multiply by square root of a
-  for(i=0; i<n; ++i){
-    for(j=0; j<i; ++j){
-      L_new[i][j] = (sqrt(a)*L_new[i][j]
+  for(i=0;i<n;++i){
+    for(j=0;j<i;++j){
+      L[i][j] *= sqrt(b);
     }
   }
 }
@@ -121,6 +118,24 @@ void fwdinv(double **L_inv, double **L, int n){
   }
 }
 
+double solve(double **L, double *b, double *y, double *x, int n){
+  int i,j,k;
+
+  y[0] = b[0] / L[0][0];
+  for( i=0; i<n; ++i ){
+    y[i] = b[i];
+    for(j=0; j<i; ++j) y[i] -= y[j] * L[i][j];
+    y[i] = y[i] / L[i][i];
+  }
+  x[n-1] = y[n-1] / L[n-1][n-1];
+  for( i=(n-2); i>-1; --i ){
+    x[i] = y[i];
+    for(j=(n-1); j>i; --j) x[i] -= x[j] * L[j][i];
+    x[i] = x[i] / L[i][i];
+  }
+  return *x;
+}
+
 void matvec(double *y, double **A, double *x, int n){
   int i,j;
   for(i=0;i<n;++i){
@@ -131,75 +146,15 @@ void matvec(double *y, double **A, double *x, int n){
   }
 }
 
-
-// Bivariate DCC(1,1) Model Filter
-void bidcc_filter(int *status, double *rho, double* eps, double *loglik, double *param, double *_y, int *T, int *N){
-
-  int t, i;
-  double logden;
-  double alpha,beta;
-  double **Q, **y;
-  double rho_bar;
-  *loglik = 0;
-
-  // sanity check
-  if( !finite(param[0]) || !finite(param[1]) ){
-    *loglik = -HUGE_VAL;
-    return;
-  }
-
-  alpha = param[0];
-  beta  = param[1];
-
-  // check constraints
-  if( alpha <= 1e-5 || beta < 0 || (alpha+beta)>1 ){
-    *loglik = -HUGE_VAL;
-    return;
-  }
-
-  // allocate
-  Q = create_real_matrix(*T,3);
-  y = create_and_copy_real_matrix(*T,2,_y);
-  work1 = create_real_vector(*N);
-  work2 = create_real_matrix(*N,*N);
-
-
-  // loop
-  *loglik = 0;
-  for( t=1; t<*T; ++t ){
-    Q[t][0] = (1-alpha-beta)         + alpha*y[t-1][0]*y[t-1][0] + beta*Q[t-1][0];
-    Q[t][1] = (1-alpha-beta)         + alpha*y[t-1][1]*y[t-1][1] + beta*Q[t-1][1];
-    Q[t][2] = rho_bar*(1-alpha-beta) + alpha*y[t-1][0]*y[t-1][1] + beta*Q[t-1][2];
-    rho[t]  = Q[t][2]/sqrt(Q[t][0]*Q[t][1]);
-
-    logden  = -0.5*log(2*PI) - 0.5*log(1-rho[t]*rho[t]) - 0.5*(y[t][0]*y[t][0]+y[t][1]*y[t][1]-2*y[t][0]*y[t][1]*rho[t])/ (1.0-rho[t]*rho[t]);
-
-    if( finite(logden) ){
-      *loglik += logden;
-    }
-    else{
-      Rprintf("problem at time %d\n",t);
-    }
-
-  }
-
-  // safeguard
-  if( !isfinite(*loglik) ){
-    *loglik = -HUGE_VAL;
-  }
-
-  // cleanup
-  destroy_real_matrix(Q,*T,3);
-  destroy_real_matrix(y,*T,2);
-}
-
-
 // n-variate DCC Model Filter
-void dcc_filter(int *status, double **omega, double **eps, double *loglik, double *param, double *_y, int *T, int *N, double **omega){
+void dcc_filter(int *status, double **omega, double **eps, double *loglik, double *param, double *_y, int *T, int *N){
 
   int i,t;
   double logden1, logden2;
   double alpha,beta;
+  double *y, *x;
+  double *work1;
+  double **work2, **Q;
 
   // sanity check
   if( !finite(param[0]) || !finite(param[1]) ){
@@ -217,35 +172,32 @@ void dcc_filter(int *status, double **omega, double **eps, double *loglik, doubl
   }
 
   // allocate
-  Q = create_and_copy_real_matrix(*N, *N, **omega);
   y = create_and_copy_real_matrix(*T,*N,_y);
   work1 = create_real_vector(*N);
   work2 = create_real_matrix(*N,*N);
+  x = create_real_vector(*N);
   *loglik = 0;
 
   // init
   chol(Q, work2, *N);
 
   // First part of log-likelihood: log determinant of Rt
-  logden1 = 0
+  logden1 = 0;
 
   for(i = 0; i < *N; ++i){
-    logden1 += log(work2[i][i])
+    logden1 += log(work2[i][i]);
   }
-
-  
 
   // loop
   *loglik = 0;
   for(t=1; t<*T; ++t ){
 
-    if( finite(logden) ){
-      *loglik += logden;
+    if( finite(logden1) ){
+      *loglik += logden1;
     }
     else{
       Rprintf("problem at time %d\n",t);
     }
-
   }
 
   // safeguard
@@ -254,36 +206,4 @@ void dcc_filter(int *status, double **omega, double **eps, double *loglik, doubl
   }
 
   // cleanup
-  destroy_real_matrix(Q,*T,3);
-  destroy_real_matrix(y,*T,2);
 }
-
-/*
-// Update of the form S = a*S + WW*
-void rank_r_chol_up(double **L_new, double **L_old, double **W, int n, double a, double b, double **work, int r) {
-  int i,j,p;
-  double alpha_bar;
-  double *alpha, *d, *gamma;
-
-  work = create_and_copy_real_matrix(n,n,W);
-
-  for( i = 1; i < r; ++i){
-    alpha[i] = 1;
-  }
-  for( j = 1; j < n; ++j){
-    for( i = 1; i < r; ++i){
-      alpha_bar = alpha[i] + work[j][i]*work[j][i]/d[j];
-      d[j] = d[j] * alpha_bar;
-      gamma[i] = work[j][i]/d[j];
-      d[j] = d[j]/alpha[i];
-      alpha[i] = alpha_bar;
-    }
-    for( p = j; p < n; ++p){
-      for( i = 1; i < r; ++i){
-        work[p][i] = work[p][i] - work[j][i] * L_old[p][j];
-        L_new[p][j] = L_old[p][j] + gamma[i] * work[p][i];
-      }
-    }
-  }
-}
-*/

@@ -18,7 +18,7 @@
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
-\documentclass[paper=a4, fontsize=10pt]{scrartcl} % A4 paper and 11pt font size
+\documentclass{article} % A4 paper and 11pt font size
 
 \usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
 %\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
@@ -27,6 +27,7 @@
 
 \usepackage{graphicx}
 \usepackage{pdfpages}
+%\usepackage{hyperref}
 
 \usepackage{sectsty} % Allows customizing section commands
 \allsectionsfont{\normalfont} % Make all sections centered, the default font and small caps
@@ -47,6 +48,7 @@
 \renewcommand{\headrulewidth}{0pt} % Remove header underlines
 \renewcommand{\footrulewidth}{0pt} % Remove footer underlines
 \setlength{\headheight}{12pt} % Customize the height of the header
+\setlength{\parskip}{1em}
 
 \numberwithin{equation}{section} % Number equations within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
 \numberwithin{figure}{section} % Number figures within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
@@ -63,47 +65,99 @@
 \title{
 \normalfont \normalsize
 \textsc{Barcelona Graduate School of Economics} \\ [20pt] % Your university, school and/or department name(s)
-\horrule{0.5pt} \\[0.2cm] % Thin top horizontal rule
-\Large Estimation of Dynamic Conditional Correlation Model \\ % The assignment title
-\horrule{0.5pt} \\[0.2cm] % Thick bottom horizontal rule
+\horrule{0.5pt} \\[0.1cm] % Thin top horizontal rule
+\Large Efficient Estimation of Dynamic Conditional Correlation Models \\ % The assignment title
+\horrule{0.5pt} \\[0.1cm] % Thick bottom horizontal rule
 }
 
 \author{Euan Dowers} % Your name
 
-\date{} % Today's date or a custom date
+\date{\normalsize\today} % Today's date or a custom date
 
 \begin{document}
 
 \maketitle % Print the title
 
-\section{Dynamic Conditional Correlation Model}
+\tableofcontents
 
-Let the conditional correlation between two random variables $y_1, y_2$ with zero mean be defined as
+\pagebreak
+
+%----------------------------------------------------------------------------------------
+% NEW SECTION
+%----------------------------------------------------------------------------------------
+
+\section{Introduction}
+
+The aim of this paper is to allow the DCC model to be efficiently estimated in large dimensions, using two innovations. The first, due to Engle, Ledoit and Wolf \cite{engle ledoit and wolf}, is to use the linear shrinkage method of Ledoit and Wolf \cite{ledoit and wolf} to estimate the correlation targeting matrix of the DCC model, and the second, which is the original innovation of this paper, is to calculate the log-likelihood of the DCC model using a series of rank-one updates to the cholesky decomposition of the quasi-correlation matrix at each time period, thus avoiding having to refactor this matrix at every time period.
+
+The structure of this report is as follows: Section \ref{section: dcc} will describe the Dynamic Conditional Correlation model, including the estimation problem; Section \ref{section: shrinkage} will describe the linear shrinkage estimation for covariance matrices of Ledoit and Wolf.
+
+%----------------------------------------------------------------------------------------
+% NEW SECTION
+%----------------------------------------------------------------------------------------
+
+\section{Dynamic Conditional Correlation Model} \label{section: dcc}
+
+In order to describe the Dynamic Conditional Correlation Model, it is necessary to build up some notation.
+\begin{enumerate}
+  \item Let $r_{i,t}$ denote the return of asset $i$ at time $t$, and $r_t$ be the $N$-dimensional vector of all returns at time $t$.
+  \item Let $d_{i,t}^2 = V_{t-1}(r_{i,t})$ be the conditional variance of asset $i$ at time $t$, given information up to time $t-1$.
+  \item Let $D_t$ be a diagonal matrix whose i-th element is $d_{it}$.
+  \item Let $H_t$ be the conditional covariance matrix whose $i,j$-th element is the conditional covariance between assets $i$ and $j$ at time $t$.
+  \item Let $\epsilon_{i,t} = \frac{r_{i,t}}{d_{i,t}}$ be the standardised residuals of asset $i$ at time $t$.
+  \item Let $R_t$ be the conditional correlation matrix, whose i,j-th entry is given by the conditional correlation between asset $i$ and asset $j$ at time $t$.
+  \item Let $\sigma_i^2$ be the unconditional variance of the series $r_i,t$
+  \item Let $R$ be the unconditional correlation matrix of the system.
+\end{enumerate}
+
+%----------------------------------------------------------------------------------------
+
+\subsection{Dynamic Conditional Correlation Model}
+
+The Dynamic Conditional Correlation model of Engle \cite{engle2002} is as follows. Assume we have $N$ financial assets, and we observe for each of these assets a series of returns over a time period $1, \ldots , T$.
+
+Since the conditional correlation and conditional covariance are related by the equation
 \begin{equation}
-\rho_{1,2,t} = \frac{E_{t-1}y_{1,t}y_{2,t}}{\sqrt{E_{t-1}y_{1,t}^2E_{t-1}y_{1,t}^2}}
+  \rho_{i,j,t} = \frac{E_{t-1}((r_{i,t} - E_{t-1}(r_{i,t}))(r_{j,t} - E_{t-1}(r_{j,t})))}
+                      {\sqrt{V_{t-1}(r_{i,t})V_{t-1}(y_{j,t})}},
+\end{equation}
+these entries are therefore also given by
+\begin{equation}
+  \frac{H_{i,j,t}}{\sqrt{H_{i,i,t}H_{j,j,t}}}.
+\end{equation}
+Therefore, the conditional correlation matrix and conditional variance matrix are given by
+\begin{equation}
+  R_t = D_t^{-1} H_t D_t ^{-1} \ \  D_t ^2 = diag[H_t]
 \end{equation}
 
-Let the conditional covariance matrix of our multivariate process be defined by
+To model the quantities $d_{i,t}$ we apply the univariate GARCH(1,1) model to each asset serparately to obtain the dynamics of its conditional variance.
 \begin{equation}
-H_t = V_{t-1}(y_t)
+  H_{i,i,t} = \omega_i + \alpha_i r_{t-1}^2 + \beta_i H_{i,i,t-1}.
+\end{equation}
+ Then, the standardised residuals $\epsilon _{i,t}$ are calculated as described above.
+
+In the mean-reverting DCC model that we use, the dynamics of the quasi-correlation matrix $Q_t$ are governed by the process
+\begin{equation}
+  Q_t = \Omega + \alpha \epsilon_{t-1}\epsilon_{t-1}^T + \beta Q_{t-1}.
+\end{equation}
+In the correlation targeting version of this model, the intercept matrix $\Omega$ is given
+\begin{equation}
+  \Omega = (1 - \alpha - \beta)R
 \end{equation}
 
-The Constant Conditional Correlation model of Bollerslev \cite{bollerslev90} assumes time invariant conditional correlations between assets. So the covariance matrix of the CCC model is defined by
-\begin{equation}
-H_t = D_t R D_t
-\end{equation}
+%----------------------------------------------------------------------------------------
+% NEW SECTION
+%----------------------------------------------------------------------------------------
 
-\section{Estimation}
+\section{Shrinkage Estimation}\label{section: shrinkage}
 
-The estimation of the DCC model consists of 3 steps.
+\section{DCC Model Estimation}\label{section: shrinkage}
 
-\begin{equation}
-Q_t = \lambda\epsilon_{t-1}\epsilon_{t-1}^T + (1-\lambda) Q_{t-1}
-\end{equation}
+\section{DCC Model Estimation}\label{section: shrinkage}
 
 \begin{thebibliography}{9}
 \bibitem{engle2002}
-Engle, Robert
+Engle, R.
 \textit{Dynamic Conditional Correlation - a simple class of multivariate models}.
 Journal of Business and Economic Statistics, 2002.
 
@@ -111,6 +165,10 @@ Journal of Business and Economic Statistics, 2002.
 Bollerslev, D
 \textit{Dynamic Conditional Correlation - a simple class of multivariate models}.
 Journal of Business and Economic Statistics, 1990.
+
+\bibitem{anticipating correlations}
+Engle, R.
+\textit{Anticipating Correlations: a new paradigm for risk management}
 \end{thebibliography}
 
 \end{document}
