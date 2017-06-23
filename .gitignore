@@ -1,7 +1,6 @@
 dynamo.c
 dynamo.o
 dynamo.so
-R-Package-dynamo/
 *.so
 *.o
 src/C/rank2c

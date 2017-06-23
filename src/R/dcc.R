@@ -101,6 +101,10 @@ upperBounds <- 1 - lowerBounds
 fit = nlminb(start = params, objective = log_likelihood_DCC,
              lower = lowerBounds, upper = upperBounds ,  control = list(trace=3))
 
+time0 = Sys.time()
 log_likelihood_DCC(params)
+time1 = Sys.time()
+print(time1 - time0)
+
 
 

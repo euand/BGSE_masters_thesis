@@ -1,9 +1,6 @@
 #############################################################
 # Loading and processing data for use in dcc model estimation
 #############################################################
-
-rm(list = ls())
-
 library(fGarch)
 library(KFAS)
 
