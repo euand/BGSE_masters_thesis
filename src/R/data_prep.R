@@ -29,10 +29,11 @@ y <- y[!is.na(y)]
 x <- x[1:length(y)]
 z <- z[1:length(y)]
 
-X <- rbind(x,y,z)
+X <- cbind(x,y,z)
+dim(X)
 
 # Step 1: degarching the data
-x_garch = garchFit(data = x); eps_x = x/sqrt(x_garch@h.t)
-y_garch = garchFit(data = y); eps_y = y/sqrt(y_garch@h.t)
-z_garch = garchFit(data = z); eps_z = z/sqrt(z_garch@h.t)
+x_garch = garchFit(data = x, trace = F); eps_x = x/sqrt(x_garch@h.t)
+y_garch = garchFit(data = y, trace = F); eps_y = y/sqrt(y_garch@h.t)
+z_garch = garchFit(data = z, trace = F); eps_z = z/sqrt(z_garch@h.t)
 eps = rbind(eps_x, eps_y, eps_z)

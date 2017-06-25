@@ -8,7 +8,7 @@ rank_one_update <- function(L, x, a=1, b=1){
   n = length(x)
   work = sqrt(a/b) * x
   for(i in 1:(n-1)){
-    r <- sqrt(L[i,i] + work[i]*work[i])
+    r <- sqrt(L[i,i]*L[i,i] + work[i]*work[i])
     c <- r / L[i,i]
     s <- work[i] / L[i,i]
     L[i,i] <- r
@@ -61,7 +61,6 @@ loglik_part2 <- function(L_tilde,eps){
   return( eps %*% y )
 }
 
-
 log_likelihood_DCC <- function(params){
   alpha <- params[1]
   beta <- params[2]
@@ -71,18 +70,16 @@ log_likelihood_DCC <- function(params){
   
   # Calculate omega hat matrix and use to initialise log-likelihood calculation
   T           <- ncol(eps)
-  omega       <- (1/T) * (1 - alpha - beta) * (eps %*% t(eps))
+  omega       <- (1/T) * (eps %*% t(eps))
   shrink_est  <- linear_shrinkage(eps, 2, 0.5)
   
   # Cholesky decomposition of omega, and 
   L   <- t(chol(omega))
   # Calculate cholesky decomposition of R_t 
   L_tilde <- diag(1/sqrt(rowSums(L**2))) %*% L
-  l   <- sum(log(diag(L_tilde)))
-  l2  <- loglik_part2(L_tilde, eps[,1]) 
-  l   <- l + l2
+  l = 0
   for(t in 2:T){
-    L   <- rank_one_update(L,eps[,t], a = alpha, b = beta)
+    L   <- rank_one_update(L,eps[,(t-1)], a = alpha, b = beta)
     L   <- shrink_est_update(L, shrink_est, alpha, beta)
     L_tilde <- diag(1/sqrt(rowSums(L**2))) %*% L
     y <- solve(L_tilde %*% t(L_tilde), eps[,t])
@@ -90,21 +87,6 @@ log_likelihood_DCC <- function(params){
     }
   return(l)
 }
-
-###################
-# Fitting the model
-###################
-
-params <- c(0.01,0.6)
-lowerBounds <- c(10E-6, 10E-6)
-upperBounds <- 1 - lowerBounds
-fit = nlminb(start = params, objective = log_likelihood_DCC,
-             lower = lowerBounds, upper = upperBounds ,  control = list(trace=3))
-
-time0 = Sys.time()
-log_likelihood_DCC(params)
-time1 = Sys.time()
-print(time1 - time0)
 
 
 

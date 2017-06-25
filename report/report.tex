@@ -21,12 +21,40 @@
 \documentclass{article} % A4 paper and 11pt font size
 
 \usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
-%\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
 \usepackage[english]{babel} % English language/hyphenation
 \usepackage{amsmath,amsfonts,amsthm} % Math packages
 
 \usepackage{graphicx}
 \usepackage{pdfpages}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  language=C,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
 %\usepackage{hyperref}
 
 \usepackage{sectsty} % Allows customizing section commands
@@ -88,7 +116,7 @@
 
 \section{Introduction}
 
-The aim of this paper is to allow the DCC model to be efficiently estimated in large dimensions, using two innovations. The first, due to Engle, Ledoit and Wolf \cite{engle ledoit and wolf}, is to use the linear shrinkage method of Ledoit and Wolf \cite{ledoit and wolf} to estimate the correlation targeting matrix of the DCC model, and the second, which is the original innovation of this paper, is to calculate the log-likelihood of the DCC model using a series of rank-one updates to the cholesky decomposition of the quasi-correlation matrix at each time period, thus avoiding having to refactor this matrix at every time period.
+The aim of this paper is to efficiently estimate the Dynamic Conditional Correlation model in large dimensions (both in time and the number of assets included in the model), using two innovations. The first, due to Engle, Ledoit and Wolf \cite{engle ledoit and wolf}, is to use the linear shrinkage method of Ledoit and Wolf \cite{ledoit and wolf} to estimate the correlation targeting matrix of the DCC model, and the second, which is original to this paper, is to calculate the log-likelihood of the DCC model using a series of rank-one updates to the cholesky decomposition of the quasi-correlation matrix at each time period, thus avoiding having to refactor this matrix at every time period.
 
 The structure of this report is as follows: Section \ref{section: dcc} will describe the Dynamic Conditional Correlation model, including the estimation problem; Section \ref{section: shrinkage} will describe the linear shrinkage estimation for covariance matrices of Ledoit and Wolf.
 
@@ -101,9 +129,9 @@ The structure of this report is as follows: Section \ref{section: dcc} will desc
 In order to describe the Dynamic Conditional Correlation Model, it is necessary to build up some notation.
 \begin{enumerate}
   \item Let $r_{i,t}$ denote the return of asset $i$ at time $t$, and $r_t$ be the $N$-dimensional vector of all returns at time $t$.
-  \item Let $d_{i,t}^2 = V_{t-1}(r_{i,t})$ be the conditional variance of asset $i$ at time $t$, given information up to time $t-1$.
-  \item Let $D_t$ be a diagonal matrix whose i-th element is $d_{it}$.
-  \item Let $H_t$ be the conditional covariance matrix whose $i,j$-th element is the conditional covariance between assets $i$ and $j$ at time $t$.
+  \item Let $d_{i,t}^2 = V_{t-1}(r_{i,t} | \mathcal{F}_{t-1})$ be the conditional variance of asset $i$ at time $t$, given information up to time $t-1$.
+  \item Let $D_t$ be a diagonal matrix such that $D_{i,i,t} = d_{it}$.
+  \item Let $H_t$ denote the conditional covariance matrix such that $H_{i,i,t} = \text{cov}_{t-1}(r_{i,t}, r_{j,t} | \mathcal{F}_{t-1})$.
   \item Let $\epsilon_{i,t} = \frac{r_{i,t}}{d_{i,t}}$ be the standardised residuals of asset $i$ at time $t$.
   \item Let $R_t$ be the conditional correlation matrix, whose i,j-th entry is given by the conditional correlation between asset $i$ and asset $j$ at time $t$.
   \item Let $\sigma_i^2$ be the unconditional variance of the series $r_i,t$
@@ -114,7 +142,7 @@ In order to describe the Dynamic Conditional Correlation Model, it is necessary 
 
 \subsection{Dynamic Conditional Correlation Model}
 
-The Dynamic Conditional Correlation model of Engle \cite{engle2002} is as follows. Assume we have $N$ financial assets, and we observe for each of these assets a series of returns over a time period $1, \ldots , T$.
+Assume we have $N$ financial assets, and we observe for each of these assets a series of returns over a time period $1, \ldots , T$.
 
 Since the conditional correlation and conditional covariance are related by the equation
 \begin{equation}
@@ -130,30 +158,140 @@ Therefore, the conditional correlation matrix and conditional variance matrix ar
   R_t = D_t^{-1} H_t D_t ^{-1} \ \  D_t ^2 = diag[H_t]
 \end{equation}
 
-To model the quantities $d_{i,t}$ we apply the univariate GARCH(1,1) model to each asset serparately to obtain the dynamics of its conditional variance.
-\begin{equation}
-  H_{i,i,t} = \omega_i + \alpha_i r_{t-1}^2 + \beta_i H_{i,i,t-1}.
-\end{equation}
- Then, the standardised residuals $\epsilon _{i,t}$ are calculated as described above.
 
-In the mean-reverting DCC model that we use, the dynamics of the quasi-correlation matrix $Q_t$ are governed by the process
+In the mean-reverting DCC model, the dynamics of the quasi-correlation matrix $Q_t$ are governed by the process
 \begin{equation}
-  Q_t = \Omega + \alpha \epsilon_{t-1}\epsilon_{t-1}^T + \beta Q_{t-1}.
+  Q_t = \Omega + \alpha \epsilon_{t-1}\epsilon_{t-1}' + \beta Q_{t-1}.
 \end{equation}
 In the correlation targeting version of this model, the intercept matrix $\Omega$ is given
-\begin{equation}
+\begin{equation}\label{eq: correlation targeting}
   \Omega = (1 - \alpha - \beta)R
 \end{equation}
+
+The matrix $Q_t$ does not define a correlation matrix, as the diagonal elements are not necessarily 1. To convert the matrix $Q_t$ into a correlation matrix we just divide the $i,j$-th entry by $\sqrt{Q_{i,i,t}Q_{j,j,t}}$, in other words
+
+\begin{equation}
+  R_t = \text{diag}\{Q_t\}^{-\frac{1}{2}} Q_t \text{diag}\{Q_t\}^{-\frac{1}{2}}
+\end{equation}
+
+We will discuss in Section \ref{section: dcc estimation} the difficulty of estimating the parameters of this model when the number of assets considered, $N$, is large.
 
 %----------------------------------------------------------------------------------------
 % NEW SECTION
 %----------------------------------------------------------------------------------------
 
-\section{Shrinkage Estimation}\label{section: shrinkage}
+\section{Shrinkage Estimation for Large Unconditional Correlation Matrices}\label{section: shrinkage}
 
-\section{DCC Model Estimation}\label{section: shrinkage}
+As seen in Equation ref{eq: correlation targeting}, a key part of fitting the DCC model is estimating the unconditional correlation matrix $R$. We know from the cross-sectional literature that using the sample covariance matrix (Equation \ref{eq: sample_covariance}) works poorly in large dimensions, since for large $N$, with $N \approx T$, the sample covariance marix overfits to the data, and provides a good in-sample fit, but not out-of-sample.
 
-\section{DCC Model Estimation}\label{section: shrinkage}
+\begin{equation} \label{eq: sample_covariance}
+\hat{\Sigma} = \frac{1}{T} \sum \epsilon_t \epsilon_t'
+\end{equation}
+
+As the concentration ratio $N/T$ becomes nearer to $1$ the sample covariance matrix contains a lot of estimation error, and is ill-conditioned, and in the case of financial data this is the case: we want to analyse the covariance structure of as many stocks as possible.
+
+In fact, Ledoit and Wolf \cite{linear_shrinkage} show that the eigenvalues of the sample covariance matrix are further from their mean than the true eigenvalues, so they suggest an estimator of the form of Equation \ref{eq: linear_shrinkage}, where $\lambda_i$ is the i-th largest eigenvalue, and $u_i$ is its corresponding eigenvector.
+
+\begin{equation} \label{eq: linear_shrinkage}
+\bar{C} = \sum\limits_{i=1}^N \left(\rho \bar{\lambda} + (1 - \rho)\lambda_i \right) u_i u_i '
+\end{equation}
+
+Ledoit and Wolf also show \cite{non-linear shrinkage} that using a non-linear version of shrinkage estimation works better, but employing this technique is beyond the scope of this paper, and is an opportunity for further research. The main difference being that in nonlinear shrinkage the shrinkage parameter $\rho$ is determined for each eigenvector individually rather than being forced to be the same for each eigenvector.
+
+%----------------------------------------------------------------------------------------
+% NEW SECTION
+%----------------------------------------------------------------------------------------
+
+\section{DCC Model Estimation}\label{section: dcc estimation}
+
+In Section
+
+The problem of estimating the DCC model can be formulated as a maximum likelihood problem. In the DCC model where the conditional distribution of $r_t$
+
+\begin{equation}\label{eq: loglik}
+l = - \frac{1}{2} \sum\limits_{t=1}^T n \log(2\pi) + 2 \log |D_t| + y_t' D_t^2y_t - \epsilon_t' \epsilon_t + \log |R_t| + \epsilon_t'R_t^{-1}\epsilon_t
+\end{equation}
+
+This log-likelihood can be split into two parts, the first part contains only the variane parameters from the GARCH specification in Equation \ref{eq: garch}, and the second contains only the DCC parameters, $\alpha$ and $\beta$. This log-likelihood can therefore be maximised in two stages, the first maximising with respect to the variance parameters $\omega_i, \alpha_i, \beta_i$, and the second stage maximising with respect to $\alpha, \beta$. The first stage is done by fitting a univariate GARCH(1,1) model to each asset independently.
+
+To model the quantities $d_{i,t}$, and from this extract the standardised residuals $\epsilon_t$ we apply the univariate GARCH(1,1) model to each asset serparately to obtain the dynamics of its conditional variance.
+\begin{equation}\label{eq: garch}
+  H_{i,i,t} = \omega_i + \alpha_i r_{t-1}^2 + \beta_i H_{i,i,t-1}.
+\end{equation}
+ Then, the standardised residuals $\epsilon _{i,t}$ are given by
+ \begin{equation}
+\epsilon_{i,t} = \frac{r_{i,t}}{d_{i,t}}
+ \end{equation}
+
+For the second stage, after fitting our univariate, independent GARCH(1,1) models, we extract the standardised residuals $\epsilon_{i,t}$ and use these to calculate the second part of the log-likelihood function
+
+\begin{equation}\label{eq: L2}
+l_2 = -\frac{1}{2}\sum\limits_{t=1}^{T} \log |R_t| + \epsilon_t'R_t^{-1}\epsilon_t.
+\end{equation}
+
+To clarify how this relates to the specification of the mean-reverting DCC model in terms of $\alpha$ and $\beta$, let us remind ourselves of the dynamics of the quasi-correlation matrix $Q_t$, and how $Q_t$ relates to the conditional correlation matrix $R_t$.
+\begin{align}
+Q_t
+&= \Omega + \alpha \epsilon_{t-1}\epsilon_{t-1}' + \beta Q_{t-1}, \\
+\text{and } R_t
+&= \text{diag}\{Q_t\}^{-\frac{1}{2}} Q_t \text{diag}\{Q_t\}^{-\frac{1}{2}}.
+\end{align}
+
+Therefore, in order to calculate the log-likelihood of our observed data, we need to, at every time interval $t$, invert the matrix $R_t$. Therefore, if $T$ or $N$ is large, directly estimating the log-likelihood in a naive way (by calculating the inverse of the matrix $R_t$ for each $t \in \{1, \ldots , T\}$) becomes computationally infeasible.
+
+\subsection{Cholesky Decomposition}
+
+The first thing to note is that we do not ever calculat the inverse of the matrix $R_t$. Rather we use the \textit{Cholesky decomposition}, where, for a positive definite matrix $A$, $A = LL'$, where $L$ is a lower triangular matrix.
+\begin{equation}
+  L=
+    \begin{bmatrix}
+      L_{11} & 0      & 0       \\
+      L_{21} & L_{22} & 0       \\
+      L_{31} & L_{32} & L_{33}  \\
+    \end{bmatrix}.
+\end{equation}
+This allows us to solve the system of linear equations $Ax = b$ (and thus $x = A^{-1}b$) using forward and back-substitution, without having to calculate $A^{-1}$. In particular, we want to, at each time interval $t$, calculate the quantity $R_t^{-1}\epsilon_t$. So, given the Cholesky decomposition of the matrix $R_t$, $\tilde{L}_t$ we can compute $x_t = R_t^{-1}\epsilon$ and therefore $ = \epsilon_t'x_t = \epsilon_t'R_t^{-1}\epsilon_t$, the second part of $l_2$. Therefore, if we can come up with an efficient way of updating the cholesky decomposition of $R_t$ at each time interval $t$, then we can improve on the
+
+\subsection{Updating the Cholesky Decomposition}
+
+Fortunately, there are algorithms for updating the cholesky decomposition of a matrix $A$ when $A$ is modified by
+\begin{equation}
+\tilde{A} = A + x'x
+\end{equation}
+where $x$ is a vector of length $N$. Such an update is called a rank one update, and the algorithm implemented for finding the Cholesky decomposition of $\tilde{A}$ is given by Algorithm \ref{rank one update}
+
+\begin{algorithm}
+\caption{Rank One Update to Cholesky decomposition}\label{rank one update}
+\begin{algorithmic}[1]
+\Procedure{RankOneUp}{}
+\For {$i \in 1:N$}
+\State $r \gets \sqrt{L_{ii}^2 + x_i^2}$
+\State $c \gets r / L_{ii}$
+\State $s \gets x_i/L_{ii}$
+\For {$j \in i+1:N$}
+\State $L_{ji} \gets \frac{L_{ji} + sx_{j}}{c}$
+\State $x_j \gets c x_j - sL_{ji}$
+\EndFor
+\EndFor
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Noting that if we take $x$ to be $\sqrt{\frac{\alpha}{\beta}}\epsilon_t$, this gives us an algorithm for finding the Cholesky decomposition of $Q_{t-1} + \frac{\alpha }{\beta}\epsilon_t \epsilon_t'$. Now note that if we multiply the resulting decomposition $\tilde{L}$ by $\sqrt{\beta}$ we get the Cholesky decomposition of $\alpha \epsilon_t' \epsilon_t + \beta Q_{t-1}$. Therefore, this algorithm has given us an efficient way to update the Cholesky decomposition of the quasi-correlation matrix $Q_t$. However, the problem occurs when we add the full rank correlation target matrix $\Omega$. There is no way of updating the Cholesky decomposition upon adding a full-rank matrix that is any more efficient than refactoring the matrix $Q_t$ at every time interval $t$.
+
+The innovation of this paper is to approximate each update by
+
+%----------------------------------------------------------------------------------------
+% NEW SECTION
+%----------------------------------------------------------------------------------------
+
+\section{Monte Carlo Simulation}
+
+%----------------------------------------------------------------------------------------
+% NEW SECTION
+%----------------------------------------------------------------------------------------
+
+\section{Conclusion}
 
 \begin{thebibliography}{9}
 \bibitem{engle2002}
@@ -170,5 +308,6 @@ Journal of Business and Economic Statistics, 1990.
 Engle, R.
 \textit{Anticipating Correlations: a new paradigm for risk management}
 \end{thebibliography}
+
 
 \end{document}

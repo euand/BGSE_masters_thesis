@@ -1,0 +1,287 @@
+
+\appendix{Appendix A - Code}
+
+\emph{C Code}
+\begin{lstlisting}
+
+  #include <R.h>
+  #include <math.h>
+
+  // utilities
+  double *create_real_vector(int size){
+    double *vec = (double *) Calloc(size,double);
+    return vec;
+  }
+
+  void destroy_real_vector(double *vector, int size){
+    Free(vector);
+  }
+
+  double **create_real_matrix(int rows, int cols){
+    int i;
+    double **mat = (double **) Calloc(rows,double*);
+    for(i = 0; i < rows; i++) mat[i] = (double *) Calloc(cols,double);
+    return mat;
+  }
+
+  double **create_and_copy_real_matrix(int rows, int cols, double *data){
+    int i,j;
+    double **mat = (double **) Calloc(rows,double*);
+    for(i = 0; i < rows; i++){
+      mat[i] = (double *) Calloc(cols,double);
+      for(j=0;j<cols;++j) mat[i][j] = data[j * rows + i];
+    }
+    return mat;
+  }
+
+  void real_matrix_copy(double **mat, int d1, int d2, double *data){
+    int i, j;
+    for( i=0; i<d1; ++i)
+      for( j=0; j<d2; ++j)
+        data[i+d1*j] = mat[i][j];
+  }
+
+  void destroy_real_matrix(double **matrix, int rows, int cols){
+    int i;
+    for(i = 0; i < rows; i++){ Free(matrix[i]); }
+    Free(matrix);
+  }
+
+
+  // update of S = a*xx' + b*S
+  void chol_up(double **L, double *x, int n, double a, double b, double *work) {
+    int i,j;
+    double r, c, s;
+
+    memcpy(work,x,sizeof(double)*n);
+    for(i=0;i<n;++i) work[i] = sqrt(a/b)*work[i]; // this could be avoided maybe?
+
+    for(i=0;i<n;++i){
+      r = sqrt(L[i][i]*L[i][i] + work[i]*work[i]);
+      c = r/L[i][i];
+      s = work[i] / L[i][i];
+      L[i][i] = r;
+      for(j=i+1;j<n;++j){
+        L[j][i] = (L[j][i] + s*work[j]) / c;
+        work[j] = c*work[j] - s*L[j][i];
+      }
+    }
+    for(i=0;i<n;++i){
+      for(j=0;j<=i;++j){
+        L[i][j] *= sqrt(b);
+      }
+    }
+  }
+
+  void solve(double **L, double *b, double *y, double *x, int n){
+    int i,j,k;
+
+    y[0] = b[0] / L[0][0];
+    for( i=0; i<n; ++i ){
+      y[i] = b[i];
+      for(j=0; j<i; ++j) y[i] -= y[j] * L[i][j];
+      y[i] = y[i] / L[i][i];
+    }
+    x[n-1] = y[n-1] / L[n-1][n-1];
+    for( i=(n-2); i>-1; --i ){
+      x[i] = y[i];
+      for(j=(n-1); j>i; --j) x[i] -= x[j] * L[j][i];
+      x[i] = x[i] / L[i][i];
+    }
+  }
+
+  // n-variate DCC Model Filter
+  void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *param, double *shrinkage_coefs, double *_shrinkage_vectors, int *T, int *N, int *n){
+
+    int i,j,t;
+    double logden;
+    double alpha, beta, L_tilde_denom;
+    double *y, *x;
+    double *work1;
+    double **L, **eps, **L_tilde, **shrinkage_vectors;
+
+    *loglik = 0;
+
+    // sanity check
+    if( !finite(param[0]) || !finite(param[1]) ){
+      *loglik = HUGE_VAL;
+      return;
+    }
+
+    alpha = param[0];
+    beta  = param[1];
+
+    // check constraints
+    if( alpha <= 1e-5 || beta < 0 || (alpha+beta)>1 ){
+      *loglik = HUGE_VAL;
+      return;
+    }
+
+    // allocate
+    work1   = create_real_vector(*N);
+    x       = create_real_vector(*N);
+    y       = create_real_vector(*N);
+    L       = create_and_copy_real_matrix(*N,*N, _L);
+    L_tilde = create_and_copy_real_matrix(*N,*N, _L);
+    eps     = create_and_copy_real_matrix(*T, *N, _eps);
+    shrinkage_vectors = create_and_copy_real_matrix(*n, *N, _shrinkage_vectors);
+
+    // First part of log-likelihood: log determinant of Rt
+    logden        = 0;
+    L_tilde_denom = 0;
+    // Calculate Q^(-1/2) * L
+    for(i = 0; i < *N; ++i){
+      for(j = 0; j <= i; ++j) L_tilde_denom += L[i][j] * L[i][j];
+      for(j = 0; j <= i; ++j) L_tilde[i][j]  = L[i][j] / sqrt(L_tilde_denom);
+      L_tilde_denom = 0;
+    }
+
+    // Add log determinant
+    // Add likelihoods from each time step
+
+    for(t=1; t<*T; ++t ){
+
+      // Update L
+      // update of S = a*S + b*x*x'
+      chol_up(L, eps[t-1], *N, alpha, beta, work1);
+
+      for(i=0;i<*n;++i){
+        chol_up(L, shrinkage_vectors[i], *N, (1 - alpha - beta) * shrinkage_coefs[i], 1, work1);
+      }
+
+      // Calculate Q^(-1/2) * L
+      for(i = 0; i < *N; ++i){
+        L_tilde_denom = 0;
+        for(j = 0; j <= i; ++j) L_tilde_denom += L[i][j] * L[i][j];
+        for(j = 0; j <= i; ++j) L_tilde[i][j] = L[i][j] / sqrt(L_tilde_denom);
+      }
+
+      for(i = 0; i < *N; ++i) *loglik += log(L_tilde[i][i]);
+
+      //if( finite(logden) ){
+      //  *loglik += logden;
+      //}
+      //else{
+      //  Rprintf("problem at time %d\n",t);
+      //}
+
+      solve(L_tilde, eps[t], y, x, *N);
+
+      for(i = 0; i < *N; ++i) *loglik += x[i] * eps[t][i];
+
+
+    }
+    // safeguard
+    if( !isfinite(*loglik) ){
+      *loglik = HUGE_VAL;
+    }
+
+    // cleanup
+    destroy_real_matrix(L_tilde,*N,*N);
+    destroy_real_vector(y,*N);
+    destroy_real_vector(x,*N);
+    destroy_real_matrix(L,*N, *N);
+    destroy_real_matrix(shrinkage_vectors,2, *N);
+    destroy_real_matrix(eps,*T, *N);
+    destroy_real_vector(work1,*N);
+  }
+  //
+\end{lstlisting}
+
+\emph{R Code}
+\lstset{language=R}
+\begin{lstlisting}
+  dyn.load('/home/euan/documents/BGSE_masters_thesis/R-Package-dynamo/src/dynamo.so')
+  source('/home/euan/documents/BGSE_masters_thesis/src/R/data_prep.R')
+
+  linear_shrinkage <- function(eps, n, rho){
+    # Linear shrinkage estimator of covariance function
+    # eps: matrix of de-garched returns
+    # n: number of eigenvalues to take
+    T             <- ncol(eps)
+    N             <- nrow(eps)
+
+    sample_covariance_matrix  <- (1/T)*(eps %*% t(eps))
+    eigenvals                 <- eigen(sample_covariance_matrix)
+
+    eigenvectors  <- eigenvals$vectors
+    lambda        <- eigenvals$values
+
+    lambda_bar    <- mean(lambda)
+    C_bar         <- matrix(rep(0,(N**2)), N,N)
+    shrink_coef   <- rep(0,n)
+    for (i in 1:n){
+      shrink_coef[i]  <- rho * lambda_bar + (1 - rho)*lambda[i]
+      C_bar           <- C_bar + shrink_coef[i] * (eigenvectors[,i] %*% t(eigenvectors[,i]))
+    }
+    return(list(coefficients = shrink_coef, vectors = eigenvectors[,1:n]))
+  }
+
+  dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
+
+    n   <- nrow(shrinkage_vectors)
+    T   <- nrow(eps)
+    N   <- ncol(eps)
+
+    if( any(!is.finite(params)) ){
+      filter = list( loglik=Inf , sigma2=rep(NA,T) )
+      return( filter )
+    }
+
+    result <- .C( 'dcc_filter',
+                  status = as.integer(0),
+                  L = as.double(L) ,
+                  eps = as.double(eps) ,
+                  loglik = as.double(0) ,
+                  params = as.double(params) ,
+                  as.double(shrinkage_coefs),
+                  as.double(shrinkage_vectors),
+                  as.integer(T),
+                  as.integer(N),
+                  as.integer(n),
+                  PACKAGE="dynamo"
+    )
+
+    return(list('loglik' = result$loglik))
+    #$
+  }
+
+  llh <- function(params){
+    return(as.matrix(dcc.filter(coefs, vectors, t(eps), params, t(L))$loglik))
+  }
+  #$
+  DCC.fit <- function(X, n, rho, Trace = 3){
+    # Given matrix of returns, fits DCC model
+
+    # Step 1: degarching the data
+    N <- ncol(X)
+    T <- nrow(X)
+    eps <- matrix(rep(0, N*T), N,T)
+    for(i in 1:N){
+      eps[i,] <- X[,i]/sqrt(garchFit(data = X[,i], trace = F)@h.t)
+    }
+
+    # Step 2: Optimising the DCC model parameters
+    omega  <- (1/T)*(eps %*% t(eps))
+    L   <- t(chol(omega))
+
+    shrink_est  <- linear_shrinkage(eps, n, rho)
+
+    coefs <- shrink_est$coefficients; vectors = shrink_est$vectors
+
+    llh <- function(params){
+      return(as.matrix(dcc.filter(coefs, t(vectors), t(eps), params, L)$loglik))
+    }
+    #$
+    params <- c(0.05,0.9)
+    lowerBounds <- c(10E-6, 10E-6)
+    upperBounds <- 1 - lowerBounds
+    if(Trace > 0){fit = nlminb(start = params, objective = llh,
+                             lower = lowerBounds, upper = upperBounds, control =  list(trace=Trace))}
+    else{  fit = nlminb(start = params, objective = llh,
+                        lower = lowerBounds, upper = upperBounds)}
+    return(list(par = fit$par, loglik = -0.5*fit$objective))
+
+  }
+
+\end{lstlisting}

@@ -435,7 +435,7 @@ void solve(double **L, double *b, double *y, double *x, int n){
 }
 
 // n-variate DCC Model Filter
-void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *param, int *T, int *N){
+void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *param, int *T, int *N){ //*shrinkage_coefs, *_shrinkage_vectors, int *T, int *N){
 
   int i,j,t;
   double logden;
@@ -462,12 +462,13 @@ void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *p
   }
 
   // allocate
-  work1 = create_real_vector(*N);
-  x = create_real_vector(*N);
-  y = create_real_vector(*N);
-  L = create_and_copy_real_matrix(*N,*N, _L);
-  L_tilde = create_and_copy_real_matrix(*N,*N, _L);
-  eps   = create_and_copy_real_matrix(*T, *N, _eps);
+  work1     = create_real_vector(*N);
+  x         = create_real_vector(*N);
+  y         = create_real_vector(*N);
+  L         = create_and_copy_real_matrix(*N,*N, _L);
+  L_tilde   = create_and_copy_real_matrix(*N,*N, _L);
+  eps       = create_and_copy_real_matrix(*T, *N, _eps);
+  //shrinkage = create_and_copy_real_matrix(2, *N, _shrinkage_vectors);
 
   // First part of log-likelihood: log determinant of Rt
   logden = 0;
@@ -507,6 +508,8 @@ void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *p
     //else{
     //  Rprintf("problem at time %d\n",t);
     //}
+
+    Rprintf(eps[t])
 
     solve(L_tilde, eps[t], y, x, *N);
 
