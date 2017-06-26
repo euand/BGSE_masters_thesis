@@ -106,6 +106,8 @@
 
 \maketitle % Print the title
 
+\pagebreak
+
 \tableofcontents
 
 \pagebreak
@@ -250,7 +252,7 @@ The first thing to note is that we do not ever calculat the inverse of the matri
       L_{31} & L_{32} & L_{33}  \\
     \end{bmatrix}.
 \end{equation}
-This allows us to solve the system of linear equations $Ax = b$ (and thus $x = A^{-1}b$) using forward and back-substitution, without having to calculate $A^{-1}$. In particular, we want to, at each time interval $t$, calculate the quantity $R_t^{-1}\epsilon_t$. So, given the Cholesky decomposition of the matrix $R_t$, $\tilde{L}_t$ we can compute $x_t = R_t^{-1}\epsilon$ and therefore $ = \epsilon_t'x_t = \epsilon_t'R_t^{-1}\epsilon_t$, the second part of $l_2$. Therefore, if we can come up with an efficient way of updating the cholesky decomposition of $R_t$ at each time interval $t$, then we can improve on the
+This allows us to solve the system of linear equations $Ax = b$ (and thus $x = A^{-1}b$) using forward and back-substitution, without having to calculate $A^{-1}$. In particular, we want to, at each time interval $t$, calculate the quantity $R_t^{-1}\epsilon_t$. So, given the Cholesky decomposition of the matrix $R_t$, $\tilde{L}_t$ we can compute $x_t = R_t^{-1}\epsilon$ and therefore $ = \epsilon_t'x_t = \epsilon_t'R_t^{-1}\epsilon_t$, the second part of $l_2$. Therefore, if we can come up with a way of updating the cholesky decomposition of $R_t$ at each time interval $t$, without having to refactor, then we can improve on the computational complexity of the log-likelihood calculation.
 
 \subsection{Updating the Cholesky Decomposition}
 
@@ -279,7 +281,7 @@ where $x$ is a vector of length $N$. Such an update is called a rank one update,
 
 Noting that if we take $x$ to be $\sqrt{\frac{\alpha}{\beta}}\epsilon_t$, this gives us an algorithm for finding the Cholesky decomposition of $Q_{t-1} + \frac{\alpha }{\beta}\epsilon_t \epsilon_t'$. Now note that if we multiply the resulting decomposition $\tilde{L}$ by $\sqrt{\beta}$ we get the Cholesky decomposition of $\alpha \epsilon_t' \epsilon_t + \beta Q_{t-1}$. Therefore, this algorithm has given us an efficient way to update the Cholesky decomposition of the quasi-correlation matrix $Q_t$. However, the problem occurs when we add the full rank correlation target matrix $\Omega$. There is no way of updating the Cholesky decomposition upon adding a full-rank matrix that is any more efficient than refactoring the matrix $Q_t$ at every time interval $t$.
 
-The innovation of this paper is to approximate each update by
+The innovation of this paper is to approximate each update by using the linear shrinkage estimator for the covariance matrix, and then
 
 %----------------------------------------------------------------------------------------
 % NEW SECTION
@@ -290,6 +292,11 @@ The innovation of this paper is to approximate each update by
 %----------------------------------------------------------------------------------------
 % NEW SECTION
 %----------------------------------------------------------------------------------------
+
+\section{YOLO}
+
+$yo^{lo}$
+
 
 \section{Conclusion}
 

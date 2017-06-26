@@ -52,13 +52,8 @@ dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
   return(list('loglik' = result$loglik))
 }
 
-llh <- function(params){
-  return(as.matrix(dcc.filter(coefs, vectors, t(eps), params, t(L))$loglik))
-}
-
 DCC.fit <- function(X, n, rho, Trace = 3){
   # Given matrix of returns, fits DCC model
-  
   # Step 1: degarching the data
   N <- ncol(X)
   T <- nrow(X)
@@ -66,7 +61,7 @@ DCC.fit <- function(X, n, rho, Trace = 3){
   for(i in 1:N){
     eps[i,] <- X[,i]/sqrt(garchFit(data = X[,i], trace = F)@h.t)
   }
-
+  dim(eps)
   # Step 2: Optimising the DCC model parameters
   omega  <- (1/T)*(eps %*% t(eps))
   L   <- t(chol(omega))
@@ -83,12 +78,11 @@ DCC.fit <- function(X, n, rho, Trace = 3){
   lowerBounds <- c(10E-6, 10E-6)
   upperBounds <- 1 - lowerBounds
   if(Trace > 0){fit = nlminb(start = params, objective = llh,
-                           lower = lowerBounds, upper = upperBounds, control =  list(trace=Trace))}
+                             lower = lowerBounds, upper = upperBounds, control =  list(trace=Trace))}
   else{  fit = nlminb(start = params, objective = llh,
                       lower = lowerBounds, upper = upperBounds)}
   return(list(par = fit$par, loglik = -0.5*fit$objective))
 }
-
 
 DCC.fit.eps <- function(eps, n, rho, Trace = 3){
   # Given matrix of epsilons, fits DCC model
