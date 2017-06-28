@@ -1,7 +1,8 @@
 dyn.load('/home/euan/documents/BGSE_masters_thesis/R-Package-dynamo/src/dynamo.so')
 source('/home/euan/documents/BGSE_masters_thesis/src/R/data_prep.R')
+library(ggplot2)
 
-linear_shrinkage <- function(eps, n, rho){
+linear_shrinkage <- function(eps, n){
   # Linear shrinkage estimator of covariance function
   # eps: matrix of de-garched returns
   # n: number of eigenvalues to take
@@ -11,17 +12,27 @@ linear_shrinkage <- function(eps, n, rho){
   sample_covariance_matrix  <- (1/T)*(eps %*% t(eps))
   eigenvals                 <- eigen(sample_covariance_matrix)
   
+  m    <- tr(sample_covariance_matrix %*% diag(rep(1,N)))/N
+  d_sq <- norm(sample_covariance_matrix - diag(rep(m,N)), type = 'f')
+  b_bar <- norm(eps[,1] %*% t(eps[,1]) - sample_covariance_matrix, type = 'f')^2
+  for(t in 2:T){
+    b_bar <- b_bar + norm(eps[,t] %*% t(eps[,t]) - sample_covariance_matrix, type = 'f')^2
+  }
+  b_bar <- b_bar/(T**2)
+  b <- min(b_bar, d_sq)
+  rho <- b/d_sq
+  
   eigenvectors  <- eigenvals$vectors
   lambda        <- eigenvals$values
   
   lambda_bar    <- mean(lambda)
   C_bar         <- matrix(rep(0,(N**2)), N,N)
   shrink_coef   <- rep(0,n)
-  for (i in 1:n){
+  for (i in 1:N){
     shrink_coef[i]  <- rho * lambda_bar + (1 - rho)*lambda[i]
     C_bar           <- C_bar + shrink_coef[i] * (eigenvectors[,i] %*% t(eigenvectors[,i]))
   }
-  return(list(coefficients = shrink_coef, vectors = eigenvectors[,1:n]))
+  return(list(coefficients = shrink_coef[1:n], vectors = eigenvectors[,1:n], est = C_bar))
 }
 
 dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
@@ -52,7 +63,7 @@ dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
   return(list('loglik' = result$loglik))
 }
 
-DCC.fit <- function(X, n, rho, Trace = 3){
+DCC.fit <- function(X, n, Trace = 3){
   # Given matrix of returns, fits DCC model
   # Step 1: degarching the data
   N <- ncol(X)
@@ -61,20 +72,18 @@ DCC.fit <- function(X, n, rho, Trace = 3){
   for(i in 1:N){
     eps[i,] <- X[,i]/sqrt(garchFit(data = X[,i], trace = F)@h.t)
   }
-  dim(eps)
   # Step 2: Optimising the DCC model parameters
-  omega  <- (1/T)*(eps %*% t(eps))
+  shrink_est  <- linear_shrinkage(eps, n)
+  omega <- shrink_est$est
+  omega <- diag(diag(omega**(-1/2))) %*% omega %*% diag(diag(omega**(-1/2)))
   L   <- t(chol(omega))
-  
-  shrink_est  <- linear_shrinkage(eps, n, rho)
-  
+
   coefs <- shrink_est$coefficients; vectors = shrink_est$vectors
-  
   llh <- function(params){
-    return(as.matrix(dcc.filter(coefs, t(vectors), t(eps), params, L)$loglik))
+    return(as.matrix(dcc.filter(coefs, t(vectors), t(eps), params, t(L))$loglik))
   }
-  
-  params <- c(0.05,0.9)
+  params <- c(0.07,0.9)
+
   lowerBounds <- c(10E-6, 10E-6)
   upperBounds <- 1 - lowerBounds
   if(Trace > 0){fit = nlminb(start = params, objective = llh,
@@ -84,30 +93,4 @@ DCC.fit <- function(X, n, rho, Trace = 3){
   return(list(par = fit$par, loglik = -0.5*fit$objective))
 }
 
-DCC.fit.eps <- function(eps, n, rho, Trace = 3){
-  # Given matrix of epsilons, fits DCC model
-  
-  N <- nrow(eps)
-  T <- ncol(eps)
-  
-  # Step 2: Optimising the DCC model parameters
-  omega  <- (1/T)*(eps %*% t(eps))
-  L   <- t(chol(omega))
-  
-  shrink_est  <- linear_shrinkage(eps, n, rho)
-  
-  coefs <- shrink_est$coefficients; vectors = shrink_est$vectors
-  
-  llh <- function(params){
-    return(as.matrix(dcc.filter(coefs, t(vectors), t(eps), params, L)$loglik))
-  }
-  
-  params <- c(0.05,0.9)
-  lowerBounds <- c(10E-6, 10E-6)
-  upperBounds <- 1 - lowerBounds
-  if(Trace > 0){fit = nlminb(start = params, objective = llh,
-                             lower = lowerBounds, upper = upperBounds, control =  list(trace=Trace))}
-  else{  fit = nlminb(start = params, objective = llh,
-                      lower = lowerBounds, upper = upperBounds)}
-  return(list(par = fit$par, loglik = -0.5*fit$objective))
-}
+DCC.fit(X, 3, 1)

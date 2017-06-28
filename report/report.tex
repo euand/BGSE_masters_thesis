@@ -62,6 +62,8 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows}
 
+\newtheorem{definition}{Definition}
+
 %\usepackage{titlesec}
 %\titleformat*{\subsubsection}{\bfseries}
 
@@ -118,6 +120,8 @@
 
 \section{Introduction}
 
+Estimating the correlation structure of a large number of financial assets is an important task for mean-variance optimisation, but is also an extremely difficult task, especially when the requirement is added that this correlation structure varies over time.
+
 The aim of this paper is to efficiently estimate the Dynamic Conditional Correlation model in large dimensions (both in time and the number of assets included in the model), using two innovations. The first, due to Engle, Ledoit and Wolf \cite{engle ledoit and wolf}, is to use the linear shrinkage method of Ledoit and Wolf \cite{ledoit and wolf} to estimate the correlation targeting matrix of the DCC model, and the second, which is original to this paper, is to calculate the log-likelihood of the DCC model using a series of rank-one updates to the cholesky decomposition of the quasi-correlation matrix at each time period, thus avoiding having to refactor this matrix at every time period.
 
 The structure of this report is as follows: Section \ref{section: dcc} will describe the Dynamic Conditional Correlation model, including the estimation problem; Section \ref{section: shrinkage} will describe the linear shrinkage estimation for covariance matrices of Ledoit and Wolf.
@@ -142,9 +146,9 @@ In order to describe the Dynamic Conditional Correlation Model, it is necessary 
 
 %----------------------------------------------------------------------------------------
 
-\subsection{Dynamic Conditional Correlation Model}
-
 Assume we have $N$ financial assets, and we observe for each of these assets a series of returns over a time period $1, \ldots , T$.
+
+The DCC model models financial assets jointly by first modelling their individual volatility structures and then modelling the correlation structure between them in a separate model.
 
 Since the conditional correlation and conditional covariance are related by the equation
 \begin{equation}
@@ -159,7 +163,6 @@ Therefore, the conditional correlation matrix and conditional variance matrix ar
 \begin{equation}
   R_t = D_t^{-1} H_t D_t ^{-1} \ \  D_t ^2 = diag[H_t]
 \end{equation}
-
 
 In the mean-reverting DCC model, the dynamics of the quasi-correlation matrix $Q_t$ are governed by the process
 \begin{equation}
@@ -176,6 +179,8 @@ The matrix $Q_t$ does not define a correlation matrix, as the diagonal elements 
   R_t = \text{diag}\{Q_t\}^{-\frac{1}{2}} Q_t \text{diag}\{Q_t\}^{-\frac{1}{2}}
 \end{equation}
 
+This model is the \textit{mean reverting} DCC model because we can see that over time as shocks to the correlation structure of the system decay, the system will tend towards its mean.
+
 We will discuss in Section \ref{section: dcc estimation} the difficulty of estimating the parameters of this model when the number of assets considered, $N$, is large.
 
 %----------------------------------------------------------------------------------------
@@ -184,18 +189,67 @@ We will discuss in Section \ref{section: dcc estimation} the difficulty of estim
 
 \section{Shrinkage Estimation for Large Unconditional Correlation Matrices}\label{section: shrinkage}
 
-As seen in Equation ref{eq: correlation targeting}, a key part of fitting the DCC model is estimating the unconditional correlation matrix $R$. We know from the cross-sectional literature that using the sample covariance matrix (Equation \ref{eq: sample_covariance}) works poorly in large dimensions, since for large $N$, with $N \approx T$, the sample covariance marix overfits to the data, and provides a good in-sample fit, but not out-of-sample.
+As seen in Equation ref{eq: correlation targeting}, a key part of fitting the DCC model is estimating the unconditional correlation matrix $R$. We know from the cross-sectional literature that using the sample covariance matrix, in Equation \ref{eq: sample_covariance}, works poorly in large dimensions, since for large $N$, with $N \approx T$, the sample covariance matrix contains a lot of estimation error, since the correlation matrix has to estimate $\frac{N(N-1)}{2}$ parameters with $T$ data points, so is prone to overfitting and provides a good fit in-sample but generalises poorly.
+
+ The \textit{shrinkage} estimator of the covariance matrix aims to solve this problem of estimating the covariance matrix in high dimensions, essentially by first showing that the largest eigenvalues of the sample covariance matrix are larger than the true values, and the smallest eigenvalues are smaller than their true values. Therefore, if we \textit{shrink} the sample eigenvalues towards their true value we should get a better estimate of the sample covariance matrix. Let $\Sigma$ denote our true covariance matrix and $\hat{\Sigma}$ denote our sample covariance matrix. Further, let $\hat{\lambda}_i$ denote the $i$-th largest eigenvalue of $\hat{\Sigma}$.
 
 \begin{equation} \label{eq: sample_covariance}
 \hat{\Sigma} = \frac{1}{T} \sum \epsilon_t \epsilon_t'
 \end{equation}
 
-As the concentration ratio $N/T$ becomes nearer to $1$ the sample covariance matrix contains a lot of estimation error, and is ill-conditioned, and in the case of financial data this is the case: we want to analyse the covariance structure of as many stocks as possible.
+The \textit{linear shrinkage} estimator of the covariance matrix, given by Ledoit and Wolf, aims to find the optimal linear combination
+\begin{equation}
+\Sigma* = \rho_1 I + \rho_2 \hat{\Sigma}
+\end{equation}
+such that the expected loss $\mathbb{E}||\Sigma^* - \Sigma||^2$ is minimal, where $||A||$ is the Frobenius norm of $A$, where for $A \in \mathbb{R}^{m \times n}$
+\begin{equation}
+||A|| = \sqrt{\text{trace}(AA')}.
+\end{equation}
+Ledoit and Wolf find an optimal, nonrandom solution for $\rho_1, \rho_2$, but it requires prior knowledge about the true covariance matrix $\Sigma$. In particular, we need to be able to calculate the following values
 
-In fact, Ledoit and Wolf \cite{linear_shrinkage} show that the eigenvalues of the sample covariance matrix are further from their mean than the true eigenvalues, so they suggest an estimator of the form of Equation \ref{eq: linear_shrinkage}, where $\lambda_i$ is the i-th largest eigenvalue, and $u_i$ is its corresponding eigenvector.
+\begin{align}
+\mu &= \langle \Sigma , I \rangle \nonumber \\
+\alpha^2 &= || \Sigma - \mu I ||^2 \nonumber \\
+\delta^2 &= \mathbb{E}||\hat{\Sigma} - \mu I ||^2.
+\end{align}
 
-\begin{equation} \label{eq: linear_shrinkage}
-\bar{C} = \sum\limits_{i=1}^N \left(\rho \bar{\lambda} + (1 - \rho)\lambda_i \right) u_i u_i '
+Given these four scalar values, Ledoit and Wolf give a nonrandom optimal linear shrinkage estimator. Consider the problem we are trying to solve:
+
+\begin{align}
+\nonumber
+\min\limits_{\rho_1, \rho_2} \mathbb{E} \left[ || \Sigma^* - \Sigma ||^2 \right]\\
+s.t  \ \Sigma ^* = \rho_1 I + \rho_2 \hat{\Sigma}.
+\end{align}
+Ledoit and Wolf show that this problem is solved by
+\begin{equation}
+\Sigma ^* = \frac{\beta^2}{\delta^2} \mu I + \left(1 - \frac{\beta^2}{\delta^2}\right) \hat{\Sigma}
+\end{equation}
+
+Obviously, however, we do not know the true covariance matrix, so we cannot directly compute these values and the optimal shrinkage intensity, $rho$. However, Ledoit and Wolf show the following constants can be combined to give a consistent estimator of the optimal shrinkage intensity.
+
+\begin{align}
+\nonumber
+m &= \langle \hat{\Sigma}, I \rangle \\
+\nonumber
+d^2 &= ||\hat{\Sigma} - mI||^2_n \\
+\nonumber
+\bar{b}^2 &= \frac{1}{^2} \sum\limits_{k=1}^{T} ||\epsilon_t \epsilon_t' - \hat{\Sigma}||^2 \\
+b^2 &= \min(\bar{b}^2, d^2)
+\end{align}
+
+A consistent estimator for the optimal shrinking intensity $\hat{\rho}$ is then given by
+\begin{equation}\label{rho hat}
+\hat{\rho} = \frac{b^2}{d^2}
+\end{equation}
+and then, our linear shrinkage estimate of the covariance matrix is
+\begin{equation}
+\bar{C} = \sum\limits_{i = 1}^{N}\left[ \hat{\rho}\bar{\lambda} + (1 - \hat{\rho}) \hat{\lambda}_i \right] u_i u_i'
+\end{equation}
+
+
+By a property of the Frobenius norm, the value $\mu$ is related to the eigenvalues of $\Sigma$, $\hat{\lambda}_i$ by the equation
+\begin{equation}
+\mu = \frac{1}{N} \sum\limits_{i=1}^{N} \lambda_i = \mathbb{E} \left[ \frac{1}{N} \sum\limits_{i=1}^{N} \hat{\lambda}_i \right]
 \end{equation}
 
 Ledoit and Wolf also show \cite{non-linear shrinkage} that using a non-linear version of shrinkage estimation works better, but employing this technique is beyond the scope of this paper, and is an opportunity for further research. The main difference being that in nonlinear shrinkage the shrinkage parameter $\rho$ is determined for each eigenvector individually rather than being forced to be the same for each eigenvector.
@@ -281,7 +335,39 @@ where $x$ is a vector of length $N$. Such an update is called a rank one update,
 
 Noting that if we take $x$ to be $\sqrt{\frac{\alpha}{\beta}}\epsilon_t$, this gives us an algorithm for finding the Cholesky decomposition of $Q_{t-1} + \frac{\alpha }{\beta}\epsilon_t \epsilon_t'$. Now note that if we multiply the resulting decomposition $\tilde{L}$ by $\sqrt{\beta}$ we get the Cholesky decomposition of $\alpha \epsilon_t' \epsilon_t + \beta Q_{t-1}$. Therefore, this algorithm has given us an efficient way to update the Cholesky decomposition of the quasi-correlation matrix $Q_t$. However, the problem occurs when we add the full rank correlation target matrix $\Omega$. There is no way of updating the Cholesky decomposition upon adding a full-rank matrix that is any more efficient than refactoring the matrix $Q_t$ at every time interval $t$.
 
-The innovation of this paper is to approximate each update by using the linear shrinkage estimator for the covariance matrix, and then
+The innovation of this paper is to approximate each update by using the linear shrinkage estimator for the covariance matrix. In particular, rather than adding the full $\Omega$ matrix at each time step, we add the $n$ largest eigenvalues. This allows us to estimate the true log-likelihood of some given DCC parameters, $\hat{\alpha}$ and  $\hat{\beta}$, a process summarised in Algorithm \ref{alg: loglik}, where the inputs are a matrix of returns, where $r_{it}$ is the return of asset $i$ at time $t$, and DCC parameter estimates $\alpha$, $\beta$
+
+\begin{algorithm}[h]
+\caption{Estimating log-likelihood}\label{alg: loglik}
+\begin{algorithmic}[1]
+\Procedure{LogLik}{}
+\For {$i \in 1:N$}
+\State Fit GARCH(1,1) model to $r_i$
+\State $\epsilon_{it} \gets r_{it} / \hat{\sigma}_{it}$
+\EndFor
+\State $\hat{\Sigma} \gets \frac{1}{T}\sum\limits_{i=1}^T \epsilon_t \epsilon_t'$
+\State Calculate eigenvalues, eigenvectors of $\hat{\Sigma}$
+\State $\hat{\lambda}_i \gets$ i-th largest eigenvalue; $u_i \gets$ corresponding eigenvector
+\State $\bar{\lambda} \gets \sum\limits_{i = 1}^N \hat{\lambda}_i$
+\State Calculate $\hat{\rho}$ as in Equation \ref{rho hat}
+\For {$i \in 1:N$}
+\State $\lambda_i \gets \hat{\rho}\bar{\lambda} + (1 - \hat{\rho})\hat{\lambda}_i$
+\EndFor
+\State $\bar{C} \gets \frac{1}{T} \sum\limits_{i = 1}^{T} \lambda_i u_i u_i'$
+\State $Q_1 \gets \bar{C}$
+\State $L \gets \text{chol}(Q_1)$
+\State $l \gets 0$
+\For {$t \in 2:T$}
+\State $Q_{t} \gets (1 - \alpha - \beta) \sum\limits_{i = 1}^n \lambda_i u_i u_i' + \alpha \epsilon_t \epsilon_t' + \beta Q_{t-1}$
+\State $L$ updated by Algorithm \ref{rank one update}
+\State $l += \log{|R_t|} + \epsilon_t'R_t^{-1}\epsilon_t$ using $L$
+\EndFor
+\State \textbf{return} $l$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+If one were to update the matrix $Q_t$ at each step, the algorithm would require $N^3/3$ FLOPs at each iteration to perform the Cholesky decomposition, and then a further $N^2$
 
 %----------------------------------------------------------------------------------------
 % NEW SECTION
@@ -289,16 +375,99 @@ The innovation of this paper is to approximate each update by using the linear s
 
 \section{Monte Carlo Simulation}
 
+\subsection{Setup of Simulations}
+
+To evaluate our method for approximating the log-likelihood of the DCC model, we use Monte Carlo simulation. In particular, we take as unconditional correlation matrix the Toeplitz matrix where the entries of the first row are given by the sequence $(1, \frac{n-1}{n}, \ldots, \frac{1}{n})$ eg
+\begin{equation}
+  L=
+    \begin{bmatrix}
+      1 & \frac{2}{3}     &  \frac{1}{3}       \\
+      \frac{1}{3} & 1 &  \frac{2}{3}        \\
+       \frac{2}{3}  & \frac{1}{3} & 1  \\
+    \end{bmatrix}.
+\end{equation}
+We then simulate the DCC model, where the volatilities of each stock are governed by a GARCH(1,1) model with the parameterisation
+\begin{equation}
+\sigma_{it} = 0.01 + 0.05 r_{t-1}^2 + 0.9\sigma_{i(t-1)},
+\end{equation}
+and the DCC parameters are $\alpha = 0.05$ and $\beta = 0.9$, as in Pakel et al \cite{pakel et al} and Engle et al \cite{engle et al}. At each Monte Carlo simulation, we simulate a DCC model with the above dynamics, and then we look at the performance of our estimation method (using the estimated bias of the parameter estimates). We do this for $N \in \{ 5,10,50,100,200\}$ and for each of these, we choose a number of candidate values for $n$, ranging from $1$ to $N$.
+
+\subsection{Results}
+
+Here we report the results from the Monte Carlo Simulations. As can be seen in Figures \ref{bias_alpha} and \ref{bias_beta}, increasing the number of rank one updates, $n$, to $N$ gives the least biased estimates of $\alpha$ and $\beta$, with this bias being around 10$\times$ higher for the $n$ less than $N$. An interesting finding is that the bias of $\alpha$ increases as more updates are made. This is counterintuitive since as you add more eigenvectors you obtain a more accurate approximation of $\Omega$, and so the estimated DCC parameters should be less biased. However, we see that in general, either using only a single rank-one update with the largest eigenvector or using $N$ rank-one updates with all eigenvectors gives the least biased results.
+
+\begin{figure}[h] \label{bias_alpha}
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c| }
+ \hline
+ N/n & 5 & 10 & 50 & 100  \\
+ \hline
+ 1 & 0.031 & 0.027 & 0.024 & 0  \\
+ \hline
+ 5 & -0.012 & -0.035 & -0.028 & 0  \\
+ \hline
+ 10 & - & 0.001 & -0.049 & 0  \\
+ \hline
+ 50 & - & - & -0.003 & 0  \\
+ \hline
+ 100 & - & - & - & 0  \\
+ \hline
+\end{tabular}
+\end{center}
+\caption{Bias of $\hat{\alpha}$ across simulations}
+\end{figure}
+
+\begin{figure}[h] \label{bias_alpha}
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c|c| }
+ \hline
+ N/n & 5 & 10 & 50 & 100 & 200 \\
+ \hline
+ 1 & -0.009 & -0.001 & -0.004 & 0 & 0\\
+ \hline
+ 5 & -0.018 & 0.055 & 0.048 & 0 &  0\\
+ \hline
+ 10 & - & -0.006 & 0.068 & 0 & 0 \\
+ \hline
+ 50 & - & - & 0.006 & 0.006  & 0\\
+ \hline
+ 100 & - & - & - & 0  & 0\\
+ \hline
+\end{tabular}
+\caption{Bias of $\hat{\beta}$ across simulations}
+\end{center}
+\end{figure}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale = 0.5]{loglik1.png}
+\caption{Estimated deviance for N = 20, n = 20}
+\end{center}
+\end{figure}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale = 0.5]{loglik2.png}
+\caption{Estimated deviance for N = 20, n = 10}
+\end{center}
+\end{figure}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale = 0.5]{loglik3.png}
+\caption{Estimated deviance for N = 20, n = 1}
+\end{center}
+\end{figure}
+
 %----------------------------------------------------------------------------------------
 % NEW SECTION
 %----------------------------------------------------------------------------------------
 
-\section{YOLO}
-
-$yo^{lo}$
-
-
 \section{Conclusion}
+
+This thesis has proposed a method for efficiently estimating the parameters of a DCC model, using the linear shrinkage estimator of the covariance matrix as our correlation targeting matrix.
+
+\pagebreak
 
 \begin{thebibliography}{9}
 \bibitem{engle2002}
