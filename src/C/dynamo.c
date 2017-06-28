@@ -502,13 +502,6 @@ void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *p
 
     for(i = 0; i < *N; ++i) *loglik += log(L_tilde[i][i]);
 
-    //if( finite(logden) ){
-    //  *loglik += logden;
-    //}
-    //else{
-    //  Rprintf("problem at time %d\n",t);
-    //}
-
     solve(L_tilde, eps[t], y, x, *N);
 
     for(i = 0; i < *N; ++i) *loglik += x[i] * eps[t][i];
@@ -526,6 +519,83 @@ void dcc_filter(int *status, double *_L, double *_eps, double *loglik, double *p
   destroy_real_vector(x,*N);
   destroy_real_matrix(L,*N, *N);
   destroy_real_matrix(shrinkage_vectors,2, *N);
+  destroy_real_matrix(eps,*T, *N);
+  destroy_real_vector(work1,*N);
+}
+//
+
+// n-variate DCC Model Filter
+void bekk_filter(int *status, double *_L, double *_eps, double *loglik, double *param, double *shrinkage_coefs, double *_shrinkage_vectors, int *T, int *N, int *n){
+
+  int i,j,t;
+  double logden;
+  double alpha, beta;
+  double *y, *x;
+  double *work1;
+  double **L, **eps, **L_tilde, **shrinkage_vectors;
+
+  *loglik = *N * log(2*M_PI);
+
+  // sanity check
+  if( !finite(param[0]) || !finite(param[1]) ){
+    *loglik = HUGE_VAL;
+    return;
+  }
+
+  alpha = param[0];
+  beta  = param[1];
+
+  // check constraints
+  if( alpha <= 1e-5 || beta < 0 || (alpha+beta)>1 ){
+    *loglik = HUGE_VAL;
+    return;
+  }
+
+  // allocate
+  work1   = create_real_vector(*N);
+  x       = create_real_vector(*N);
+  y       = create_real_vector(*N);
+  L       = create_and_copy_real_matrix(*N,*N, _L);
+  eps     = create_and_copy_real_matrix(*T, *N, _eps);
+  shrinkage_vectors = create_and_copy_real_matrix(*n, *N, _shrinkage_vectors);
+
+  // First part of log-likelihood: log determinant of Rt
+  logden        = 0;
+
+
+  // Add log determinant
+  // Add likelihoods from each time step
+
+  for(t=1; t<*T; ++t ){
+
+    // Update L
+    // update of S = a*S + b*x*x'
+    chol_up(L, eps[t-1], *N, alpha, beta, work1);
+
+    for(i=0;i<*n;++i){
+      chol_up(L, shrinkage_vectors[i], *N, (1 - alpha - beta) * shrinkage_coefs[i], 1, work1);
+    }
+
+
+    for(i = 0; i < *N; ++i) *loglik += log(L[i][i]);
+
+    solve(L, eps[t], y, x, *N);
+
+    for(i = 0; i < *N; ++i) *loglik += x[i] * eps[t][i];
+
+
+  }
+  // safeguard
+  if( !isfinite(*loglik) ){
+    *loglik = HUGE_VAL;
+  }
+
+  // cleanup
+  destroy_real_matrix(L_tilde,*N,*N);
+  destroy_real_vector(y,*N);
+  destroy_real_vector(x,*N);
+  destroy_real_matrix(L,*N, *N);
+  destroy_real_matrix(shrinkage_vectors,*n, *N);
   destroy_real_matrix(eps,*T, *N);
   destroy_real_vector(work1,*N);
 }
