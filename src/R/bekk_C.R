@@ -1,6 +1,5 @@
-dyn.load('/home/euan/documents/BGSE_masters_thesis/R-Package-dynamo/src/dynamo.so')
-source('/home/euan/documents/BGSE_masters_thesis/src/R/data_prep.R')
-library(ggplot2)
+rm(list = ls())
+source('/home/euan/documents/BGSE_masters_thesis/src/R/dcc_C.R')
 
 linear_shrinkage <- function(eps, n){
   # Linear shrinkage estimator of covariance function
@@ -35,7 +34,7 @@ linear_shrinkage <- function(eps, n){
   return(list(coefficients = shrink_coef[1:n], vectors = eigenvectors[,1:n], est = C_bar))
 }
 
-dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
+BEKK.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
   
   n   <- nrow(shrinkage_vectors)
   T   <- nrow(eps)
@@ -46,7 +45,7 @@ dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
     return( filter ) 
   }  
   
-  result <- .C( 'dcc_filter', 
+  result <- .C( 'bekk_filter', 
                 status = as.integer(0), 
                 L = as.double(L) , 
                 eps = as.double(eps) ,
@@ -63,7 +62,7 @@ dcc.filter <- function( shrinkage_coefs, shrinkage_vectors, eps , params , L){
   return(list('loglik' = result$loglik))
 }
 
-DCC.fit <- function(X, n, Trace = 3){
+BEKK.fit <- function(X, n, Trace = 3){
   # Given matrix of returns, fits DCC model
   # Step 1: degarching the data
   N <- ncol(X)
@@ -73,17 +72,17 @@ DCC.fit <- function(X, n, Trace = 3){
     eps[i,] <- X[,i]/sqrt(garchFit(data = X[,i], trace = F)@h.t)
   }
   # Step 2: Optimising the DCC model parameters
-  shrink_est  <- linear_shrinkage(eps, n)
+  shrink_est  <- linear_shrinkage(t(X), n)
   omega <- shrink_est$est
   omega <- diag(diag(omega**(-1/2))) %*% omega %*% diag(diag(omega**(-1/2)))
   L   <- t(chol(omega))
-
+  
   coefs <- shrink_est$coefficients; vectors = shrink_est$vectors
   llh <- function(params){
-    return(as.matrix(dcc.filter(coefs, t(vectors), t(eps), params, t(L))$loglik))
+    return(as.matrix(BEKK.filter(coefs, t(vectors), t(eps), params, t(L))$loglik))
   }
   params <- c(0.07,0.9)
-
+  
   lowerBounds <- c(10E-6, 10E-6)
   upperBounds <- 1 - lowerBounds
   if(Trace > 0){fit = nlminb(start = params, objective = llh,

@@ -68,6 +68,7 @@
 %\titleformat*{\subsubsection}{\bfseries}
 
 \usepackage[margin=1in]{geometry}
+\usepackage{placeins}
 
 \usepackage{fancyhdr} % Custom headers and footers
 \pagestyle{fancyplain} % Makes all pages in the document conform to the custom headers and footers
@@ -135,10 +136,10 @@ The structure of this report is as follows: Section \ref{section: dcc} will desc
 In order to describe the Dynamic Conditional Correlation Model, it is necessary to build up some notation.
 \begin{enumerate}
   \item Let $r_{i,t}$ denote the return of asset $i$ at time $t$, and $r_t$ be the $N$-dimensional vector of all returns at time $t$.
-  \item Let $d_{i,t}^2 = V_{t-1}(r_{i,t} | \mathcal{F}_{t-1})$ be the conditional variance of asset $i$ at time $t$, given information up to time $t-1$.
-  \item Let $D_t$ be a diagonal matrix such that $D_{i,i,t} = d_{it}$.
+  \item Let $\sigma_{i,t}^2 = V_{t-1}(r_{i,t} | \mathcal{F}_{t-1})$ be the conditional variance of asset $i$ at time $t$, given information up to time $t-1$.
+  \item Let $D_t$ be a diagonal matrix such that $D_{i,i,t} = \sigma_{it}$.
   \item Let $H_t$ denote the conditional covariance matrix such that $H_{i,i,t} = \text{cov}_{t-1}(r_{i,t}, r_{j,t} | \mathcal{F}_{t-1})$.
-  \item Let $\epsilon_{i,t} = \frac{r_{i,t}}{d_{i,t}}$ be the standardised residuals of asset $i$ at time $t$.
+  \item Let $\epsilon_{i,t} = \frac{r_{i,t}}{\sigma_{i,t}}$ be the standardised residual of asset $i$ at time $t$.
   \item Let $R_t$ be the conditional correlation matrix, whose i,j-th entry is given by the conditional correlation between asset $i$ and asset $j$ at time $t$.
   \item Let $\sigma_i^2$ be the unconditional variance of the series $r_i,t$
   \item Let $R$ be the unconditional correlation matrix of the system.
@@ -146,42 +147,54 @@ In order to describe the Dynamic Conditional Correlation Model, it is necessary 
 
 %----------------------------------------------------------------------------------------
 
-Assume we have $N$ financial assets, and we observe for each of these assets a series of returns over a time period $1, \ldots , T$.
+In the simpler \emph{Constant Conditional Correlation} model, the conditional correlations between pairs of assets are time-independent. In particular
+\begin{equation}
+  H_{i,j,t} = \rho_{i,j}\sqrt{H_{ii,t}H_{jj,t}}
+\end{equation}
+and thus
+\begin{equation}
+H_t = D_tRD_t, \ D_t = \text{diag}(H_t)^{1/2}
+\end{equation}
 
-The DCC model models financial assets jointly by first modelling their individual volatility structures and then modelling the correlation structure between them in a separate model.
-
-Since the conditional correlation and conditional covariance are related by the equation
+The DCC model is a natural generalisation of this model, in that it allows the conditional correlations to vary over time. The DCC model first expresses the volatility structure of assets independently, and then the correlations between returns in another. If we have two series of returns $r_i, r_j$, the conditional correlation between them is given by
 \begin{equation}
   \rho_{i,j,t} = \frac{E_{t-1}((r_{i,t} - E_{t-1}(r_{i,t}))(r_{j,t} - E_{t-1}(r_{j,t})))}
                       {\sqrt{V_{t-1}(r_{i,t})V_{t-1}(y_{j,t})}},
 \end{equation}
-these entries are therefore also given by
+and therefore
 \begin{equation}
-  \frac{H_{i,j,t}}{\sqrt{H_{i,i,t}H_{j,j,t}}}.
+\rho_{i,j,t} =  \frac{H_{i,j,t}}{\sqrt{H_{i,i,t}H_{j,j,t}}}.
 \end{equation}
 Therefore, the conditional correlation matrix and conditional variance matrix are given by
 \begin{equation}
-  R_t = D_t^{-1} H_t D_t ^{-1} \ \  D_t ^2 = diag[H_t]
+  R_t = D_t^{-1} H_t D_t ^{-1} \ \  D_t ^2 = diag[H_t].
 \end{equation}
-
-In the mean-reverting DCC model, the dynamics of the quasi-correlation matrix $Q_t$ are governed by the process
+It therefore follows that the conditional correlation matrix is given by the conditional covariance matrix of the standardised residuals
 \begin{equation}
+R_t = V_{t-1} (D_t^{-1}y_t) = V_{t-1}(\epsilon_t).
+\end{equation}
+Therefore, we only need to look at the standardised residuals of each series. The first step in fitting any DCC model is therefore to extract the standardised residuals, a problem that has been given much attention in the literature. For the purpose of this paper, I use only a GARCH(1,1) process, but software to estimate other volatility models (TARCH, APARCH, EGARCH) exists and can be used as is necessary.
+
+There are several common specifications for the dynamics of the conditional correlation matrix. In the mean-reverting DCC model, the dynamics of the quasi-correlation matrix $Q_t$ are governed by the process
+\begin{equation} \label{correlation targeting}
   Q_t = \Omega + \alpha \epsilon_{t-1}\epsilon_{t-1}' + \beta Q_{t-1}.
 \end{equation}
-In the correlation targeting version of this model, the intercept matrix $\Omega$ is given
+We can see that for each entry of the matrix $Q_t$, the dynamics are given by
+\begin{equation}
+Q_{i,j,t} = \omega_{i,j} + \alpha \epsilon_{i,t-1}\epsilon_{j,t-1} + \beta Q_{t-1},
+\end{equation}
+from which the comparison with the GARCH(1,1) model is clear. Clearly, the intercept matrix $\Omega$ introduces $N(N-1)/2$ free parameters into the model, but in the \emph{correlation targeting} version of this model, the intercept matrix $\Omega$ is given
 \begin{equation}\label{eq: correlation targeting}
-  \Omega = (1 - \alpha - \beta)R
+  \Omega = (1 - \alpha - \beta)\bar{R}
 \end{equation}
 
-The matrix $Q_t$ does not define a correlation matrix, as the diagonal elements are not necessarily 1. To convert the matrix $Q_t$ into a correlation matrix we just divide the $i,j$-th entry by $\sqrt{Q_{i,i,t}Q_{j,j,t}}$, in other words
-
+Then, to convert the matrix $Q_t$ into a correlation matrix we just divide the $i,j$-th entry by $\sqrt{Q_{i,i,t}Q_{j,j,t}}$, ie
 \begin{equation}
   R_t = \text{diag}\{Q_t\}^{-\frac{1}{2}} Q_t \text{diag}\{Q_t\}^{-\frac{1}{2}}
 \end{equation}
-
 This model is the \textit{mean reverting} DCC model because we can see that over time as shocks to the correlation structure of the system decay, the system will tend towards its mean.
 
-We will discuss in Section \ref{section: dcc estimation} the difficulty of estimating the parameters of this model when the number of assets considered, $N$, is large.
+We will discuss in Section \ref{section: dcc estimation} how the DCC model is estimated in practice, and the difficulty of doing so when the number of assets considered, $N$, is large.
 
 %----------------------------------------------------------------------------------------
 % NEW SECTION
@@ -189,7 +202,7 @@ We will discuss in Section \ref{section: dcc estimation} the difficulty of estim
 
 \section{Shrinkage Estimation for Large Unconditional Correlation Matrices}\label{section: shrinkage}
 
-As seen in Equation ref{eq: correlation targeting}, a key part of fitting the DCC model is estimating the unconditional correlation matrix $R$. We know from the cross-sectional literature that using the sample covariance matrix, in Equation \ref{eq: sample_covariance}, works poorly in large dimensions, since for large $N$, with $N \approx T$, the sample covariance matrix contains a lot of estimation error, since the correlation matrix has to estimate $\frac{N(N-1)}{2}$ parameters with $T$ data points, so is prone to overfitting and provides a good fit in-sample but generalises poorly.
+As seen in Equation ref{eq: correlation targeting}, a key part of fitting the DCC model is estimating the covariance matrix of the standardised residuals. We know from the cross-sectional literature that using the sample covariance matrix, in Equation \ref{eq: sample_covariance}, works poorly in large dimensions, since for large $N$, with $N \approx T$, the sample covariance matrix contains a lot of estimation error, since the correlation matrix has to estimate $\frac{N(N-1)}{2}$ parameters with $T$ data points, so is prone to overfitting and provides a good fit in-sample but generalises poorly.
 
  The \textit{shrinkage} estimator of the covariance matrix aims to solve this problem of estimating the covariance matrix in high dimensions, essentially by first showing that the largest eigenvalues of the sample covariance matrix are larger than the true values, and the smallest eigenvalues are smaller than their true values. Therefore, if we \textit{shrink} the sample eigenvalues towards their true value we should get a better estimate of the sample covariance matrix. Let $\Sigma$ denote our true covariance matrix and $\hat{\Sigma}$ denote our sample covariance matrix. Further, let $\hat{\lambda}_i$ denote the $i$-th largest eigenvalue of $\hat{\Sigma}$.
 
@@ -379,7 +392,7 @@ If one were to update the matrix $Q_t$ at each step, the algorithm would require
 
 To evaluate our method for approximating the log-likelihood of the DCC model, we use Monte Carlo simulation. In particular, we take as unconditional correlation matrix the Toeplitz matrix where the entries of the first row are given by the sequence $(1, \frac{n-1}{n}, \ldots, \frac{1}{n})$ eg
 \begin{equation}
-  L=
+  T=
     \begin{bmatrix}
       1 & \frac{2}{3}     &  \frac{1}{3}       \\
       \frac{1}{3} & 1 &  \frac{2}{3}        \\
@@ -396,19 +409,31 @@ and the DCC parameters are $\alpha = 0.05$ and $\beta = 0.9$, as in Pakel et al 
 
 Here we report the results from the Monte Carlo Simulations. As can be seen in Figures \ref{bias_alpha} and \ref{bias_beta}, increasing the number of rank one updates, $n$, to $N$ gives the least biased estimates of $\alpha$ and $\beta$, with this bias being around 10$\times$ higher for the $n$ less than $N$. An interesting finding is that the bias of $\alpha$ increases as more updates are made. This is counterintuitive since as you add more eigenvectors you obtain a more accurate approximation of $\Omega$, and so the estimated DCC parameters should be less biased. However, we see that in general, either using only a single rank-one update with the largest eigenvector or using $N$ rank-one updates with all eigenvectors gives the least biased results.
 
+The fact that in most Monte Carlo simulations the estimates $\hat{\alpha}$ and $\hat{\beta}$ are such that $\hat{\alpha} + \hat{\beta} \approx 1$ indicates that the impact of using only a few updates ($n < N$) rather than full updates, which in effect changes the correlation targeting matrix to
+\begin{equation} \label{partial updates}
+\Omega \equiv (1 - \alpha - \beta)\sum\limits_{i=1}^{n} \left( \hat{\rho}\bar{\lambda} + (1- \hat{\rho})\hat{\lambda_i} \right) u_i u_i'
+\end{equation}
+changes the correlation targeting matrix sufficiently that in the model it is so far from the true correlation targeting matrix that the optimal log-likelihood is to ignore it completely, biasing $\hat{\alpha}$ and $\hat{\beta}$ so $\hat{\alpha} + \alpha{\beta} \approx 1$. In the model, $\Omega$ has $N(N-1)/2$ free parameters, but in practice we just replace it with $(1 - \alpha - \beta)\bar{C}$, so in effect what using a small number of rank 1 eigenvector updates does is forces our choice of $\Omega$ to be a suboptimal one.
+
+A potential solution to this would be if we could add a diagonal matrix $D$ to the update relation in Equation \ref{partial updates}, so the correlation target would be of the form
+\begin{equation}
+\Omega \equiv (1 - \alpha - \beta)\left[\sum\limits_{i=1}^{n} \left( \hat{\rho}\bar{\lambda} + (1- \hat{\rho})\hat{\lambda}_i \right) u_i u_i' + D\right].
+\end{equation}
+This would allow the correlation target to be diagonally dominant, with each diagonal element $\omega_{ii} \approx 1 - \alpha - \beta$. This would allow the correlation target to more accurately represent the true correlation targeting matrix, and should decrease the bias in our estimates. However, no such efficient scheme exists to update a Cholesky decomposition upon addition of a diagonal matrix, and so
+
 \begin{figure}[h] \label{bias_alpha}
 \begin{center}
 \begin{tabular}{ |c|c|c|c|c| }
  \hline
  N/n & 5 & 10 & 50 & 100  \\
  \hline
- 1 & 0.031 & 0.027 & 0.024 & 0  \\
+ 1 & 0.031 & 0.027 & 0.024 & -0.014  \\
  \hline
- 5 & -0.012 & -0.035 & -0.028 & 0  \\
+ 5 & -0.012 & -0.035 & -0.028 & -0.032  \\
  \hline
- 10 & - & 0.001 & -0.049 & 0  \\
+ 10 & - & 0.001 & -0.049 & 0.041  \\
  \hline
- 50 & - & - & -0.003 & 0  \\
+ 50 & - & - & -0.003 & -0.009  \\
  \hline
  100 & - & - & - & 0  \\
  \hline
@@ -423,15 +448,15 @@ Here we report the results from the Monte Carlo Simulations. As can be seen in F
  \hline
  N/n & 5 & 10 & 50 & 100 & 200 \\
  \hline
- 1 & -0.009 & -0.001 & -0.004 & 0 & 0\\
+ 1 & -0.009 & -0.001 & -0.004 & 0.035 & 0\\
  \hline
- 5 & -0.018 & 0.055 & 0.048 & 0 &  0\\
+ 5 & -0.018 & 0.055 & 0.048 & 00.053 &  0\\
  \hline
- 10 & - & -0.006 & 0.068 & 0 & 0 \\
+ 10 & - & -0.006 & 0.068 & 0.061 & 0 \\
  \hline
- 50 & - & - & 0.006 & 0.006  & 0\\
+ 50 & - & - & 0.006 & 0.028  & 0\\
  \hline
- 100 & - & - & - & 0  & 0\\
+ 100 & - & - & - & -  & 0\\
  \hline
 \end{tabular}
 \caption{Bias of $\hat{\beta}$ across simulations}
@@ -459,13 +484,15 @@ Here we report the results from the Monte Carlo Simulations. As can be seen in F
 \end{center}
 \end{figure}
 
+\FloatBarrier
+
 %----------------------------------------------------------------------------------------
 % NEW SECTION
 %----------------------------------------------------------------------------------------
 
 \section{Conclusion}
 
-This thesis has proposed a method for efficiently estimating the parameters of a DCC model, using the linear shrinkage estimator of the covariance matrix as our correlation targeting matrix.
+This thesis has proposed a method for efficiently estimating the parameters of a DCC model, using the linear shrinkage estimator of the covariance matrix as our correlation targeting matrix. The linear shrinkage estimator for the covariance matrix was used because it has been shown in the cross-sectional, static literature that this estimator is more robust in large dimensions, where the concentration ration $\frac{N}{T}$ is large. This was used to represent the
 
 \pagebreak
 
@@ -484,6 +511,5 @@ Journal of Business and Economic Statistics, 1990.
 Engle, R.
 \textit{Anticipating Correlations: a new paradigm for risk management}
 \end{thebibliography}
-
 
 \end{document}

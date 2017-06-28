@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016/Debian) (preloaded format=pdflatex 2017.3.25)  28 JUN 2017 11:33
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016/Debian) (preloaded format=pdflatex 2017.3.25)  28 JUN 2017 20:50
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -447,6 +447,8 @@ Package: ifxetex 2010/09/12 v0.6 Provides ifxetex conditional
 \Gm@layouthoffset=\dimen176
 \Gm@layoutvoffset=\dimen177
 \Gm@dimlist=\toks44
+) (/usr/share/texlive/texmf-dist/tex/latex/placeins/placeins.sty
+Package: placeins 2005/04/18  v 2.2
 ) (/usr/share/texlive/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty
 Package: fancyhdr 2016/09/06 3.8 Extensive control of page headers and footers
 \fancy@headwidth=\skip55
@@ -465,18 +467,18 @@ LaTeX Warning: Label `bias_alpha' multiply defined.
 )
 \openout1 = `report.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 107.
-LaTeX Font Info:    ... okay on input line 107.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 107.
-LaTeX Font Info:    ... okay on input line 107.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 107.
-LaTeX Font Info:    ... okay on input line 107.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 107.
-LaTeX Font Info:    ... okay on input line 107.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 107.
-LaTeX Font Info:    ... okay on input line 107.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 107.
-LaTeX Font Info:    ... okay on input line 107.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 108.
+LaTeX Font Info:    ... okay on input line 108.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 108.
+LaTeX Font Info:    ... okay on input line 108.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 108.
+LaTeX Font Info:    ... okay on input line 108.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 108.
+LaTeX Font Info:    ... okay on input line 108.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 108.
+LaTeX Font Info:    ... okay on input line 108.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 108.
+LaTeX Font Info:    ... okay on input line 108.
  (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count145
@@ -568,11 +570,11 @@ Package pdflscape Info: Auto-detected driver: pdftex on input line 81.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-LaTeX Font Info:    Try loading font information for U+msa on input line 109.
+LaTeX Font Info:    Try loading font information for U+msa on input line 110.
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 109.
+LaTeX Font Info:    Try loading font information for U+msb on input line 110.
  (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
@@ -583,63 +585,58 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
  [2]
 
-LaTeX Warning: Citation `engle ledoit and wolf' on page 3 undefined on input line 125.
+LaTeX Warning: Citation `engle ledoit and wolf' on page 3 undefined on input line 126.
 
 
-LaTeX Warning: Citation `ledoit and wolf' on page 3 undefined on input line 125.
+LaTeX Warning: Citation `ledoit and wolf' on page 3 undefined on input line 126.
 
-[3] [4]
+[3] [4] [5]
 
-LaTeX Warning: Citation `non-linear shrinkage' on page 5 undefined on input line 255.
+LaTeX Warning: Citation `non-linear shrinkage' on page 6 undefined on input line 268.
 
-[5] [6]
+[6] [7] [8]
 
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[7]
-
-LaTeX Warning: Citation `pakel et al' on page 8 undefined on input line 393.
+LaTeX Warning: Citation `pakel et al' on page 9 undefined on input line 406.
 
 
-LaTeX Warning: Citation `engle et al' on page 8 undefined on input line 393.
+LaTeX Warning: Citation `engle et al' on page 9 undefined on input line 406.
 
 
-LaTeX Warning: Reference `bias_beta' on page 8 undefined on input line 397.
+LaTeX Warning: Reference `bias_beta' on page 9 undefined on input line 410.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-<loglik1.png, id=45, 505.89pt x 505.89pt>
+<loglik1.png, id=48, 505.89pt x 505.89pt>
 File: loglik1.png Graphic file (type png)
  <use loglik1.png>
-Package pdftex.def Info: loglik1.png used on input line 443.
+Package pdftex.def Info: loglik1.png used on input line 468.
 (pdftex.def)             Requested size: 252.94437pt x 252.94437pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<loglik2.png, id=46, 505.89pt x 505.89pt>
+<loglik2.png, id=49, 505.89pt x 505.89pt>
 File: loglik2.png Graphic file (type png)
  <use loglik2.png>
-Package pdftex.def Info: loglik2.png used on input line 450.
+Package pdftex.def Info: loglik2.png used on input line 475.
 (pdftex.def)             Requested size: 252.94437pt x 252.94437pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<loglik3.png, id=47, 505.89pt x 505.89pt>
+<loglik3.png, id=50, 505.89pt x 505.89pt>
 File: loglik3.png Graphic file (type png)
  <use loglik3.png>
-Package pdftex.def Info: loglik3.png used on input line 457.
+Package pdftex.def Info: loglik3.png used on input line 482.
 (pdftex.def)             Requested size: 252.94437pt x 252.94437pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[8] [9] [10 </home/euan/documents/BGSE_masters_thesis/report/loglik1.png>] [11 </home/euan/documents/BGSE_masters_thesis/report/loglik2.png> </home/euan/documents/BGSE_masters_thesis/report/loglik3.png>] (/home/euan/documents/BGSE_masters_thesis/report/report.aux)
+[9] [10 </home/euan/documents/BGSE_masters_thesis/report/loglik1.png>] [11 </home/euan/documents/BGSE_masters_thesis/report/loglik2.png> </home/euan/documents/BGSE_masters_thesis/report/loglik3.png>] [12
+
+] [13] (/home/euan/documents/BGSE_masters_thesis/report/report.aux)
 
 LaTeX Warning: There were undefined references.
 
@@ -648,19 +645,19 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 16611 strings out of 493013
- 312406 string characters out of 6135682
- 376465 words of memory out of 5000000
- 19800 multiletter control sequences out of 15000+600000
+ 16628 strings out of 493013
+ 312760 string characters out of 6135682
+ 371580 words of memory out of 5000000
+ 19813 multiletter control sequences out of 15000+600000
  19031 words of font info for 52 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  55i,12n,54p,788b,322s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfbx1000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfcc1000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm0800.pfb></usr/share/texmf/fonts/type1/publi
 c/cm-super/sfrm1000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1200.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1440.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfti1000.pfb>
-Output written on /home/euan/documents/BGSE_masters_thesis/report/report.pdf (11 pages, 406092 bytes).
+Output written on /home/euan/documents/BGSE_masters_thesis/report/report.pdf (13 pages, 410474 bytes).
 PDF statistics:
- 118 PDF objects out of 1000 (max. 8388607)
- 81 compressed objects within 1 object stream
+ 125 PDF objects out of 1000 (max. 8388607)
+ 86 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  28 words of extra memory for PDF output out of 10000 (max. 10000000)
 
